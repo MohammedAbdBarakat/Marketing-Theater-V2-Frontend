@@ -10,6 +10,8 @@ import { MeetingTheater } from "../../../../components/run/MeetingTheater";
 import { PhaseResultCard } from "../../../../components/run/PhaseResultCard";
 import { StrategySelectModal } from "../../../../components/run/StrategySelectModal";
 import { EventsSelectionModal } from "../../../../components/run/EventsSelectionModal";
+import { SignalsReviewModal } from "../../../../components/run/SignalsReviewModal";
+import { confirmSignals } from "../../../../lib/api";
 import { selectStrategy, getLatestRunForProject, resetPhase4, downloadReport, confirmEventSelection } from "../../../../lib/api";
 import type { CampaignDay, EventSelection } from "../../../../types/events";
 import { ConnectionStatus } from "../../../../components/run/ConnectionStatus";
@@ -243,7 +245,6 @@ export default function RunPage() {
           {
             onEvent: async (ev: any) => {
               // 1. Handle Status Update (Priority Override)
-              // 1. Handle Status Update (Priority Override)
               if (ev.type === "status_update") {
                 authoritativeStatus = ev.status;
                 run.setStatus(ev.status); // Update global store!
@@ -264,6 +265,11 @@ export default function RunPage() {
                     setEventsPrompt(null);
                   }
                 }
+                return;
+              }
+              if (ev.type === "phase_1_signals_ready") {
+                run.setSignalsData(ev.data);
+                run.setSignalsModalOpen(true);
                 return;
               }
 
@@ -368,6 +374,14 @@ export default function RunPage() {
 
   const currentLogs = run.theater[run.currentPhase as 1 | 2 | 3 | 4 | 5] || [];
 
+
+  async function handleConfirmSignals(approvedData: any) {
+    if (run.runId) {
+      await confirmSignals(run.runId, approvedData);
+    }
+    run.setSignalsModalOpen(false);
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -417,6 +431,12 @@ export default function RunPage() {
           onClose={() => setEventsPrompt(null)}
         />
       )}
+
+      <SignalsReviewModal 
+        open={run.isSignalsModalOpen} 
+        data={run.signalsData} 
+        onConfirm={handleConfirmSignals} 
+      />
 
       {run.status === "done" && (
         <div className="flex items-center justify-between mt-8 border-t pt-4">

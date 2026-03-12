@@ -33,6 +33,8 @@ export type RunState = {
   results: Partial<Record<1 | 2 | 3 | 4, PhaseResult>>;
   selectedStrategyId?: string;
   calendar: Record<string, CalendarEntry[]>; // ISO date -> entries
+  isSignalsModalOpen: boolean;
+  signalsData: any | null;
 
   setRunId: (id: string) => void;
   setStatus: (s: PhaseStatus) => void;
@@ -45,6 +47,8 @@ export type RunState = {
   setCalendar: (calendar: Record<string, CalendarEntry[]>) => void;
   setTheater: (theater: Record<number, TheaterLog[]>) => void;
   reset: () => void;
+  setSignalsModalOpen: (isOpen: boolean) => void;
+  setSignalsData: (data: any) => void;
 };
 
 export const useRunStore = create<RunState>()((set, get) => ({
@@ -56,6 +60,8 @@ export const useRunStore = create<RunState>()((set, get) => ({
   results: {},
   selectedStrategyId: undefined,
   calendar: {},
+  isSignalsModalOpen: false,
+  signalsData: null,
 
   setRunId: (id) => set({ runId: id }),
   setStatus: (s) => set({ status: s }),
@@ -81,6 +87,8 @@ export const useRunStore = create<RunState>()((set, get) => ({
   addCalendarEntries: (date, entries) =>
     set((st) => ({ calendar: { ...st.calendar, [date]: [...(st.calendar[date] || []), ...entries] } })),
   setCalendar: (calendar) => set({ calendar }),
+  setSignalsModalOpen: (isOpen) => set({ isSignalsModalOpen: isOpen }),
+  setSignalsData: (data) => set({ signalsData: data }),
   reset: () =>
     set({
       runId: undefined,

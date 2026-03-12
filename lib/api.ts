@@ -924,3 +924,14 @@ export async function analyzeVisuals(
     setTimeout(() => resolve({ summary: "Mock: 0 images, 0 videos", image_analysis: [], video_analysis: [], scraped_samples: [] }), 2000)
   );
 }
+
+export async function confirmSignals(runId: string, payload: any): Promise<void> {
+  if (IS_REMOTE) {
+    await http(`/runs/${runId}/confirm-signals`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+    return;
+  }
+  console.log("Mock confirm signals", payload);
+}
