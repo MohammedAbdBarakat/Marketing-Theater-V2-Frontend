@@ -11,8 +11,10 @@ export type StreamEvent =
   | { type: "strategy_candidates"; items: any[]; recommendedId?: string }
   | { type: "calendar_day"; date: string; entries: any[] }
   | { type: "error"; message: string }
-  | { type: "done" };
-
+  | { type: "done" }
+  | { type: "phase_1_signals_ready"; data: any }
+  | { type: "status_update"; status: string };
+  
 type Callbacks = {
   onEvent: (e: StreamEvent) => void;
   onError?: (msg: string) => void;

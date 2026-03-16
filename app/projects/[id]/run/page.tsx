@@ -248,7 +248,6 @@ export default function RunPage() {
               if (ev.type === "status_update") {
                 authoritativeStatus = ev.status;
                 run.setStatus(ev.status); // Update global store!
-
                 // If we are NOT waiting for selection, ensure panel is hidden
                 if (ev.status !== "waiting_for_selection") {
                   setStrategyPrompt(null);
@@ -268,7 +267,30 @@ export default function RunPage() {
                 return;
               }
               if (ev.type === "phase_1_signals_ready") {
-                run.setSignalsData(ev.data);
+                console.log("Raw Backend Signals:", ev.data);
+
+                // The frontend expects a flat list, but the backend sends grouped categories.
+                // We flatten them here so the Modal can read them!
+                const flattenedImplications: any[] = [];
+                const gi = ev.data?.global_intelligence || {};
+
+                const addCategory = (items: any[], categoryName: string) => {
+                  if (items && Array.isArray(items)) {
+                    flattenedImplications.push(...items.map(item => ({ ...item, category: categoryName })));
+                  }
+                };
+
+                addCategory(gi.competitor_landscape, "Competitor Landscape");
+                addCategory(gi.trending_topics, "Trending Topics");
+                addCategory(gi.audience_sentiment, "Audience Sentiment");
+                addCategory(gi.industry_news, "Industry News");
+
+                const mappedData = {
+                  market_implications: flattenedImplications,
+                  day_capsules: ev.data?.day_capsules || []
+                };
+
+                run.setSignalsData(mappedData);
                 run.setSignalsModalOpen(true);
                 return;
               }
@@ -433,7 +455,7 @@ export default function RunPage() {
       )}
 
       <SignalsReviewModal 
-        open={run.isSignalsModalOpen} 
+        isOpen={run.isSignalsModalOpen} 
         data={run.signalsData} 
         onConfirm={handleConfirmSignals} 
       />

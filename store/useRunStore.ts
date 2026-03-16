@@ -1,9 +1,10 @@
 "use client";
 import { create } from "zustand";
 
-export type PhaseStatus = "idle" | "running" | "done" | "error" | "waiting_for_selection" | "waiting_for_events";
+export type PhaseStatus = "idle" | "running" | "done" | "error" | "waiting_for_selection" | "waiting_for_events" | "waiting_for_signals";
 
 export type TheaterLog = { phase: number; speaker: string; text: string; ts: number };
+
 
 export type PhaseResult = {
   phase: 1 | 2 | 3 | 4;
