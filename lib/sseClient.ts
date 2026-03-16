@@ -10,6 +10,11 @@ export type StreamEvent =
   | { type: "phase_result"; phase: number; summary: string; artifacts: any[]; candidates?: any[] }
   | { type: "strategy_candidates"; items: any[]; recommendedId?: string }
   | { type: "calendar_day"; date: string; entries: any[] }
+  | { type: "phase_1_signals_ready"; data: any }
+  | { type: "strategy_locked"; data: any }
+  | { type: "skeleton_day_planned"; data: any }
+  | { type: "phase_2_complete"; data: any }
+  | { type: "status_update"; status: string }
   | { type: "error"; message: string }
   | { type: "done" };
 
@@ -23,7 +28,8 @@ export function simulateRunStream(
     runId: string;
     startDateISO: string;
     endDateISO: string;
-    getSelectedStrategyId: () => string | undefined;
+    hasConfirmedSignals?: () => boolean;
+    hasConfirmedStrategy?: () => boolean;
   },
   cb: Callbacks
 ): { stop: () => void; skipPhase: (phase: number) => void } {
@@ -90,11 +96,12 @@ export function simulateRunStream(
   async function runCalendarForSelected() {
     // Wait until selection exists
     let guard = 0;
-    while (!params.getSelectedStrategyId() && guard < 240 && !stopped) {
+    // Just a small delay before generating calendar in legacy mock
+    while (guard < 240 && !stopped) {
       await new Promise<void>((r) => schedule(() => r(), 250));
       guard++;
     }
-    if (!params.getSelectedStrategyId() || stopped) return;
+    if (stopped) return;
 
     // Generate day-by-day calendar within duration window
     const start = dayjs(params.startDateISO);
@@ -112,11 +119,111 @@ export function simulateRunStream(
     emit({ type: "done" });
   }
 
+  async function runPhase1Mock() {
+    emit({ type: "phase_start", phase: 1, title: "Market Intelligence Gathering", participants: ["Perplexity API", "Reddit Scraper", "Calendarific"] });
+    for (let i = 0; i < 5; i++) {
+        await new Promise<void>((res) =>
+          schedule(() => {
+            emit({ type: "log", phase: 1, speaker: i % 2 === 0 ? "Perplexity" : "Reddit", text: `Analyzing data chunk ${i + 1}...`, ts: Date.now() });
+            res();
+          }, 350)
+        );
+    }
+    
+    // Emit the phase 1 mock data
+    const mockIntelligenceData = {
+        market_implications: [
+            { id: nanoid(), title: "Rise in UGC", description: "Users prefer raw videos.", urgency: "High", category: "Trend", source: "Reddit" },
+            { id: nanoid(), title: "AI Tool Fatigue", description: "Users want simple features.", urgency: "Medium", category: "Sentiment", source: "Perplexity" }
+        ],
+        day_capsules: [
+            { id: nanoid(), date: dayjs(params.startDateISO).format("YYYY-MM-DD"), event_name: "Startup Day", significance: "High traffic", suggested_angle: "Founder story", source: "Calendarific" }
+        ]
+    };
+    emit({ type: "phase_1_signals_ready", data: mockIntelligenceData });
+    emit({ type: "status_update", status: "waiting_for_signals" });
+  }
+
+  async function runPhase2StageA() {
+      // Wait for user to confirm signals
+      let guard = 0;
+      while (!params.hasConfirmedSignals?.() && guard < 600 && !stopped) {
+        await new Promise<void>((r) => schedule(() => r(), 250));
+        guard++;
+      }
+      if (stopped) return;
+
+      emit({ type: "status_update", status: "running" });
+      emit({ type: "phase_start", phase: 2, title: "Strategy & Distribution Selection", participants: ["CEO", "Marketing Strategist", "Media Buyer"] });
+      
+      for (let i = 0; i < 5; i++) {
+        await new Promise<void>((res) =>
+          schedule(() => {
+            emit({ type: "log", phase: 2, speaker: i % 2 === 0 ? "CEO" : "Strategist", text: `Debating strategy point ${i + 1}...`, ts: Date.now() });
+            res();
+          }, 350)
+        );
+      }
+
+      const mockStrategy = {
+          strategy_title: "Community-Led Growth",
+          core_message: "We build for you, with you.",
+          rationale: "Aligns with the rise in UGC and community trust.",
+          intelligence_signals_used: ["Rise in UGC"],
+          campaign_arc: [{ phase_name: "Awareness", day_start: 1, day_end: 3, focus: "Problem illustration" }],
+          distribution_plan: { platform_weights: { "instagram": 0.6, "tiktok": 0.4 }, optimal_times: { "weekday": "18:00" }, content_mix: { "VIDEO": 0.8, "IMAGE": 0.2 } }
+      };
+
+      emit({ type: "strategy_locked", data: mockStrategy });
+      emit({ type: "status_update", status: "waiting_for_strategy_approval" });
+  }
+
+  async function runPhase2StageB() {
+       // Wait for user to confirm strategy
+       let guard = 0;
+       while (!params.hasConfirmedStrategy?.() && guard < 600 && !stopped) {
+         await new Promise<void>((r) => schedule(() => r(), 250));
+         guard++;
+       }
+       if (stopped) return;
+
+       emit({ type: "status_update", status: "running" });
+
+       const start = dayjs(params.startDateISO);
+       const end = dayjs(params.endDateISO);
+       let cursor = start.clone();
+       let dayIndex = 1;
+
+       while (cursor.isBefore(end) || cursor.isSame(end, "day")) {
+           const mockDay = {
+               day_index: dayIndex,
+               date: cursor.format("YYYY-MM-DD"),
+               day_of_week: cursor.format("dddd"),
+               goal: "Awareness",
+               topic: "Problem Teaser",
+               content_type: "VIDEO",
+               platform: "tiktok",
+               posting_time: "18:00",
+               reasoning: { goal_reason: "Start strong", topic_reason: "Hook users", type_reason: "Algorithmic preference", time_reason: "Peak hours", signals_used: [] },
+               creative_slots: { hook: null, caption: null, visual_direction: null, hashtags: null, cta: null }
+           };
+           
+           emit({ type: "skeleton_day_planned", data: mockDay });
+           
+           await new Promise<void>((r) => schedule(() => r(), 400));
+           cursor = cursor.add(1, "day");
+           dayIndex++;
+       }
+
+       emit({ type: "phase_2_complete", data: { master_strategy: {}, skeleton: [] } });
+       emit({ type: "status_update", status: "waiting_for_creative" });
+       emit({ type: "done" });
+  }
+
   async function orchestrate() {
-    await runPhase(1);
-    await runPhase(2);
-    await runPhase(3);
-    await runCalendarForSelected();
+    await runPhase1Mock();
+    await runPhase2StageA();
+    await runPhase2StageB();
   }
 
   orchestrate();
@@ -244,7 +351,13 @@ export function attach(cb: Callbacks) {
 
 export function connectStream(
   runId: string,
-  cb: Callbacks
+  cb: Callbacks,
+  mockParams?: {
+    startDateISO: string;
+    endDateISO: string;
+    hasConfirmedSignals?: () => boolean;
+    hasConfirmedStrategy?: () => boolean;
+  }
 ) {
   if (IS_REMOTE) {
     const es = new EventSource(`${API_BASE}/runs/${runId}/stream`, { withCredentials: true } as any);
@@ -264,12 +377,14 @@ export function connectStream(
       skipPhase() { },
     };
   }
-  // For mock mode, we need the extra params to simulate, but we'll extract them from a global or passed differently
-  // For now, we'll keep the mock simulation as is, but wrapped to match signature if possible,
-  // or just throw for mock if data missing. BUT, to keep mock working, we might need a separate mock-manager.
-  // HOWEVER, the user specifically asked for "Pure Listener".
-  // Let's just update the signature and rely on remote mostly, or pass mock params via a separate channel if needed.
-  // Actually, the original code passed params to simulateRunStream.
-  // Let's keep a "simulate" fallback but make the main entry point simple.
-  return { stop: () => { }, skipPhase: () => { } }; // Mock temporarily disabled via this path, use simulateRunStream directly if needed
+  
+  // Local Mock Mode
+  if (mockParams) {
+      return simulateRunStream({
+          runId,
+          ...mockParams
+      }, cb);
+  }
+
+  return { stop: () => { }, skipPhase: () => { } }; 
 }

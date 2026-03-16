@@ -1,7 +1,7 @@
 "use client";
 import { create } from "zustand";
 
-export type PhaseStatus = "idle" | "running" | "done" | "error" | "waiting_for_selection" | "waiting_for_events";
+export type PhaseStatus = "idle" | "running" | "done" | "error" | "waiting_for_selection" | "waiting_for_events" | "waiting_for_signals" | "waiting_for_strategy_approval" | "waiting_for_creative";
 
 export type TheaterLog = { phase: number; speaker: string; text: string; ts: number };
 
@@ -22,6 +22,15 @@ export type CalendarEntry = {
   effort?: "low" | "med" | "high";
   description?: string;
   relatedEvents?: string[];
+  goal?: string;
+  posting_time?: string;
+  reasoning?: {
+    goal_reason?: string;
+    topic_reason?: string;
+    type_reason?: string;
+    time_reason?: string;
+    signals_used?: string[];
+  };
 };
 
 export type RunState = {
@@ -35,6 +44,7 @@ export type RunState = {
   calendar: Record<string, CalendarEntry[]>; // ISO date -> entries
   isSignalsModalOpen: boolean;
   signalsData: any | null;
+  strategyToReview: any | null;
 
   setRunId: (id: string) => void;
   setStatus: (s: PhaseStatus) => void;
@@ -49,6 +59,7 @@ export type RunState = {
   reset: () => void;
   setSignalsModalOpen: (isOpen: boolean) => void;
   setSignalsData: (data: any) => void;
+  setStrategyToReview: (data: any) => void;
 };
 
 export const useRunStore = create<RunState>()((set, get) => ({
@@ -62,6 +73,7 @@ export const useRunStore = create<RunState>()((set, get) => ({
   calendar: {},
   isSignalsModalOpen: false,
   signalsData: null,
+  strategyToReview: null,
 
   setRunId: (id) => set({ runId: id }),
   setStatus: (s) => set({ status: s }),
@@ -89,6 +101,7 @@ export const useRunStore = create<RunState>()((set, get) => ({
   setCalendar: (calendar) => set({ calendar }),
   setSignalsModalOpen: (isOpen) => set({ isSignalsModalOpen: isOpen }),
   setSignalsData: (data) => set({ signalsData: data }),
+  setStrategyToReview: (data) => set({ strategyToReview: data }),
   reset: () =>
     set({
       runId: undefined,
@@ -99,5 +112,6 @@ export const useRunStore = create<RunState>()((set, get) => ({
       results: {},
       selectedStrategyId: undefined,
       calendar: {},
+      strategyToReview: null,
     }),
 }));

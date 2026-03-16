@@ -404,6 +404,17 @@ export async function updateBlueprint(versionId: string, blueprint: any): Promis
   if (found) write(LS_ASSET_VERSIONS, store);
 }
 
+export async function confirmStrategy(runId: string, data: any): Promise<void> {
+    if (IS_REMOTE) {
+        await http(`/runs/${runId}/confirm-strategy`, {
+            method: "POST",
+            body: JSON.stringify(data),
+        });
+        return;
+    }
+    // Handle mock mode saving
+}
+
 export async function executeGeneration(assetId: string, targetVersionId: string): Promise<void> {
   if (IS_REMOTE) {
     await http(`/api/assets/${assetId}/generate`, {
