@@ -8,7 +8,7 @@ export function PhaseStepper({
 }) {
   // --- RENAMED PHASES ---
   const items: { id: 1 | 2 | 3 | 4 | 5; label: string }[] = [
-    { id: 1, label: "Strategy" },
+    { id: 1, label: "Intelligence" },
     { id: 2, label: "Creative" },
     { id: 3, label: "Analysis" },
     { id: 4, label: "Planning" },

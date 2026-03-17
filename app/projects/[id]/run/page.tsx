@@ -15,7 +15,8 @@ import { StrategyReviewModal } from "../../../../components/run/StrategyReviewMo
 import { SkeletonDayModal } from "../../../../components/run/SkeletonDayModal";
 import { confirmSignals, confirmStrategy } from "../../../../lib/api";
 import { selectStrategy, getLatestRunForProject, resetPhase4, downloadReport, confirmEventSelection } from "../../../../lib/api";
-import type { CampaignDay, EventSelection } from "../../../../types/events";
+import type { CampaignDay } from "../../../../types/events";
+import type { IntelligenceReport } from "../../../../types/intelligence";
 import { ConnectionStatus } from "../../../../components/run/ConnectionStatus";
 import Link from "next/link";
 
@@ -29,7 +30,6 @@ export default function RunPage() {
   const [selectedSkeletonDay, setSelectedSkeletonDay] = useState<CalendarEntry | null>(null);
   const [isResetting, setIsResetting] = useState(false);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
-  const [isWaitingForEvents, setIsWaitingForEvents] = useState(false);
 
   const duration = useMemo(() => ({ start: project.duration.start, end: project.duration.end }), [project.duration]);
 
@@ -104,9 +104,8 @@ export default function RunPage() {
     try {
       const { url } = await downloadReport(run.runId);
       window.open(url, "_blank");
-    } catch (err) {
+    } catch {
       alert("Report generation failed. Please try again.");
-      console.error(err);
     } finally {
       setIsGeneratingReport(false);
     }
@@ -165,6 +164,14 @@ export default function RunPage() {
                 }
               });
               run.setTheater(newTheater);
+            }
+
+            if (latest.intelligenceReport) {
+              run.setSignalsData(latest.intelligenceReport);
+              if (!latest.results?.["1"] && !latest.results?.["2"] && !latest.results?.["3"]) {
+                run.setCurrentPhase(1);
+                run.setPhaseStatus(1, "waiting_for_signals");
+              }
             }
           }
         }
@@ -226,7 +233,12 @@ export default function RunPage() {
         try {
           const { startRun } = await import("../../../../lib/api"); // dynamic import to avoid circ dep if any
           const startRes = await startRun(activeRunId);
-          if (startRes.status === "waiting_for_events") {
+          if (startRes.status === "waiting_for_signals") {
+            run.setStatus("waiting_for_signals");
+            if (useRunStore.getState().signalsData) {
+              run.setSignalsModalOpen(true);
+            }
+          } else if (startRes.status === "waiting_for_events") {
             run.setStatus("waiting_for_events");
           } else {
             run.setStatus("running");
@@ -252,6 +264,16 @@ export default function RunPage() {
                 authoritativeStatus = ev.status;
                 run.setStatus(ev.status); // Update global store!
 
+                if (ev.status === "waiting_for_signals") {
+                  run.setCurrentPhase(1);
+                  run.setPhaseStatus(1, "waiting_for_signals");
+                  if (useRunStore.getState().signalsData) {
+                    run.setSignalsModalOpen(true);
+                  }
+                } else {
+                  run.setSignalsModalOpen(false);
+                }
+
                 // If we are NOT waiting for selection, ensure panel is hidden
                 if (ev.status !== "waiting_for_selection") {
                   setStrategyPrompt(null);
@@ -271,6 +293,8 @@ export default function RunPage() {
                 return;
               }
               if (ev.type === "phase_1_signals_ready") {
+                run.setCurrentPhase(1);
+                run.setPhaseStatus(1, "waiting_for_signals");
                 run.setSignalsData(ev.data);
                 run.setSignalsModalOpen(true);
                 return;
@@ -355,8 +379,6 @@ export default function RunPage() {
                     // return; // <--- Commented out to fix "Modal not showing" issue
                   }
 
-                  setIsWaitingForEvents(false); // Stop loading
-
                   setEventsPrompt(ev.days || []);
                   break;
 
@@ -385,7 +407,7 @@ export default function RunPage() {
           }
         );
 
-      } catch (err) {
+      } catch {
         if (mounted) { setConn("closed"); run.setStatus("error"); }
       }
     }
@@ -404,17 +426,16 @@ export default function RunPage() {
     run.setSelectedStrategy(idSelected);
     if (run.runId) await selectStrategy(run.runId, idSelected);
     setStrategyPrompt(null);
-    setIsWaitingForEvents(true); // Start waiting for campaigns events
   }
 
-  const currentLogs = run.theater[run.currentPhase as 1 | 2 | 3 | 4 | 5] || [];
 
-
-  async function handleConfirmSignals(approvedData: any) {
+  async function handleConfirmSignals(approvedReport: IntelligenceReport) {
     if (run.runId) {
-      await confirmSignals(run.runId, approvedData);
+      await confirmSignals(run.runId, { intelligence_report: approvedReport });
     }
+    run.setSignalsData(approvedReport);
     run.setSignalsModalOpen(false);
+    run.setStatus("running");
     run.setPhaseStatus(1, "done"); // Unblocks mock flow
   }
 

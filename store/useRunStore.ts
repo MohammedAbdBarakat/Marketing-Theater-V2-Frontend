@@ -1,5 +1,6 @@
 "use client";
 import { create } from "zustand";
+import type { IntelligenceReport } from "../types/intelligence";
 
 export type PhaseStatus = "idle" | "running" | "done" | "error" | "waiting_for_selection" | "waiting_for_events" | "waiting_for_signals" | "waiting_for_strategy_approval" | "waiting_for_creative";
 
@@ -43,7 +44,7 @@ export type RunState = {
   selectedStrategyId?: string;
   calendar: Record<string, CalendarEntry[]>; // ISO date -> entries
   isSignalsModalOpen: boolean;
-  signalsData: any | null;
+  signalsData: IntelligenceReport | null;
   strategyToReview: any | null;
 
   setRunId: (id: string) => void;
@@ -58,7 +59,7 @@ export type RunState = {
   setTheater: (theater: Record<number, TheaterLog[]>) => void;
   reset: () => void;
   setSignalsModalOpen: (isOpen: boolean) => void;
-  setSignalsData: (data: any) => void;
+  setSignalsData: (data: IntelligenceReport | null) => void;
   setStrategyToReview: (data: any) => void;
 };
 
@@ -112,6 +113,8 @@ export const useRunStore = create<RunState>()((set, get) => ({
       results: {},
       selectedStrategyId: undefined,
       calendar: {},
+      isSignalsModalOpen: false,
+      signalsData: null,
       strategyToReview: null,
     }),
 }));

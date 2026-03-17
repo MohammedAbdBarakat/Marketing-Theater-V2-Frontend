@@ -3,6 +3,7 @@ import { IS_REMOTE } from "./config";
 import { http } from "./http";
 import { AssetVersion, PhaseResult, GenerateAssetRequest, EditAssetRequest } from "../types/assets";
 import { EventSelection } from "../types/events";
+import type { IntelligenceReport, ConfirmSignalsPayload } from "../types/intelligence";
 export * from "../types/assets";
 
 export type Duration = { start: string; end: string };
@@ -64,6 +65,7 @@ export type RunSnapshot = {
   results: Record<string, PhaseResult>; // "1","2","3","4"
   selectedStrategyId?: string;
   calendar: Record<string, CalendarEntry[]>; // date -> entries
+  intelligenceReport?: IntelligenceReport | null;
 };
 
 
@@ -936,7 +938,7 @@ export async function analyzeVisuals(
   );
 }
 
-export async function confirmSignals(runId: string, payload: any): Promise<void> {
+export async function confirmSignals(runId: string, payload: ConfirmSignalsPayload): Promise<void> {
   if (IS_REMOTE) {
     await http(`/runs/${runId}/confirm-signals`, {
       method: "POST",

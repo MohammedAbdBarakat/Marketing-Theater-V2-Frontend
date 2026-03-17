@@ -13,20 +13,10 @@ interface MeetingTheaterProps {
 
 export function MeetingTheater({ logs, currentPhase, isDone }: MeetingTheaterProps) {
   const [viewMode, setViewMode] = useState<ViewMode>("default");
-  const [activeTab, setActiveTab] = useState<number>(currentPhase || 1);
+  const [selectedTab, setSelectedTab] = useState<number | null>(null);
   const [reduceMotion, setReduce] = useState(false);
-
-  // Sync active tab with current phase updates, unless user manually switched (optional logic, sticking to sync for now)
-  useEffect(() => {
-    if (currentPhase) setActiveTab(currentPhase);
-  }, [currentPhase]);
-
-  // Auto-collapse when done
-  useEffect(() => {
-    if (isDone) {
-      setViewMode("collapsed");
-    }
-  }, [isDone]);
+  const normalizedCurrentPhase = currentPhase > 4 ? 4 : currentPhase || 1;
+  const activeTab = selectedTab ?? normalizedCurrentPhase;
 
   // Auto-scroll logic (scoped to the active tab's logs)
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -71,10 +61,10 @@ export function MeetingTheater({ logs, currentPhase, isDone }: MeetingTheaterPro
 
           {/* Phase Tabs */}
           <div className="flex items-center gap-1 bg-gray-200/50 p-1 rounded-lg">
-            {[1, 2, 4].map((p) => (
+            {[1, 2, 3, 4].map((p) => (
               <button
                 key={p}
-                onClick={() => setActiveTab(p)}
+                onClick={() => setSelectedTab(p)}
                 className={`text-xs px-3 py-1 rounded transition-all duration-200 ${activeTab === p
                   ? "bg-white text-black font-bold shadow-sm ring-1 ring-black/5"
                   : "text-gray-500 hover:text-gray-900 hover:bg-gray-200/50"
@@ -141,31 +131,66 @@ export function MeetingTheater({ logs, currentPhase, isDone }: MeetingTheaterPro
             )}
           </div>
         ) : (
-          activeLogs.map((l, idx) => (
-            <div key={idx} className="flex items-start gap-3 text-sm group animate-in fade-in slide-in-from-bottom-1 duration-300">
-              <span className="inline-flex items-center justify-center w-8 h-8 min-w-[2rem] rounded-full bg-black text-white text-xs font-bold flex-shrink-0 shadow-sm ring-2 ring-gray-50 group-hover:ring-gray-200 transition-all">
-                {avatar(l.speaker)}
-              </span>
-              <div className="flex-1 min-w-0 pt-0.5">
-                <div className="flex items-baseline gap-2 mb-1">
-                  <div className="font-bold text-gray-900 text-xs uppercase tracking-wide">
-                    {l.speaker}
+          activeLogs.map((l, idx) => {
+            const isTool = isToolSpeaker(l.speaker);
+            const shouldAnimate = idx === lastLogIndex && !reduceMotion && activeTab === currentPhase && !isTool;
+
+            return (
+              <div
+                key={idx}
+                className={`text-sm animate-in fade-in slide-in-from-bottom-1 duration-300 ${
+                  isTool
+                    ? "rounded-2xl border border-sky-100 bg-sky-50/70 p-4"
+                    : "flex items-start gap-3 group"
+                }`}
+              >
+                {isTool ? (
+                  <div className="flex items-start gap-3">
+                    <span className="inline-flex items-center justify-center w-9 h-9 min-w-[2.25rem] rounded-xl bg-sky-600 text-white text-xs font-bold flex-shrink-0 shadow-sm">
+                      {avatar(l.speaker)}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <div className="font-bold text-sky-950 text-xs uppercase tracking-wide">{l.speaker}</div>
+                        <span className="px-2 py-0.5 rounded-full bg-white text-[10px] font-bold uppercase tracking-[0.18em] text-sky-700 border border-sky-200">
+                          Tool Status
+                        </span>
+                        <span className="text-[10px] text-sky-700/70 font-normal">
+                          {l.ts ? new Date(l.ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""}
+                        </span>
+                      </div>
+                      <div className="text-sky-950 leading-relaxed prose prose-sm max-w-none prose-p:my-0">
+                        <ReactMarkdown>{l.text}</ReactMarkdown>
+                      </div>
+                    </div>
                   </div>
-                  <span className="text-[10px] text-gray-400 font-normal">
-                    {l.ts ? new Date(l.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""}
-                  </span>
-                </div>
-                <div className="text-gray-800 leading-relaxed prose prose-sm max-w-none prose-p:my-0 prose-ul:my-1 prose-li:my-0 prose-strong:font-bold prose-headings:font-bold prose-headings:text-xs prose-headings:uppercase prose-a:text-blue-600">
-                  {/* Only animate the VERY LAST message if it's new and motion is allowed */}
-                  {idx === lastLogIndex && !reduceMotion && activeTab === currentPhase ? (
-                    <Typewriter text={l.text} />
-                  ) : (
-                    <ReactMarkdown>{l.text}</ReactMarkdown>
-                  )}
-                </div>
+                ) : (
+                  <>
+                    <span className="inline-flex items-center justify-center w-8 h-8 min-w-[2rem] rounded-full bg-black text-white text-xs font-bold flex-shrink-0 shadow-sm ring-2 ring-gray-50 group-hover:ring-gray-200 transition-all">
+                      {avatar(l.speaker)}
+                    </span>
+                    <div className="flex-1 min-w-0 pt-0.5">
+                      <div className="flex items-baseline gap-2 mb-1">
+                        <div className="font-bold text-gray-900 text-xs uppercase tracking-wide">
+                          {l.speaker}
+                        </div>
+                        <span className="text-[10px] text-gray-400 font-normal">
+                          {l.ts ? new Date(l.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""}
+                        </span>
+                      </div>
+                      <div className="text-gray-800 leading-relaxed prose prose-sm max-w-none prose-p:my-0 prose-ul:my-1 prose-li:my-0 prose-strong:font-bold prose-headings:font-bold prose-headings:text-xs prose-headings:uppercase prose-a:text-blue-600">
+                        {shouldAnimate ? (
+                          <Typewriter text={l.text} />
+                        ) : (
+                          <ReactMarkdown>{l.text}</ReactMarkdown>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
-            </div>
-          ))
+            );
+          })
         )}
 
         {/* Live Indicator (only if not done and on current phase tab) */}
@@ -215,6 +240,16 @@ function Typewriter({ text }: { text: string }) {
   return <ReactMarkdown>{displayedText}</ReactMarkdown>;
 }
 
+function isToolSpeaker(name: string) {
+  return [
+    "Perplexity",
+    "Reddit",
+    "Calendarific",
+    "Gemini",
+    "Tool",
+  ].some((label) => name.includes(label));
+}
+
 function avatar(name: string) {
   if (name.includes("CEO")) return "C";
   if (name.includes("Creative")) return "D";
@@ -222,5 +257,9 @@ function avatar(name: string) {
   if (name.includes("Copy")) return "W";
   if (name.includes("Art")) return "A";
   if (name.includes("Social")) return "S";
+  if (name.includes("Perplexity")) return "P";
+  if (name.includes("Reddit")) return "R";
+  if (name.includes("Calendarific")) return "C";
+  if (name.includes("Gemini")) return "G";
   return name[0] || "?";
 }

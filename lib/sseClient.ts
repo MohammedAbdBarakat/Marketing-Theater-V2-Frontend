@@ -3,6 +3,7 @@ import { nanoid } from "nanoid";
 import dayjs from "dayjs";
 import { appendCalendarDay, savePhaseResult } from "./api";
 import { IS_REMOTE, API_BASE } from "./config";
+import type { IntelligenceReport } from "../types/intelligence";
 
 export type StreamEvent =
   | { type: "phase_start"; phase: number; title: string; participants: string[] }
@@ -10,7 +11,7 @@ export type StreamEvent =
   | { type: "phase_result"; phase: number; summary: string; artifacts: any[]; candidates?: any[] }
   | { type: "strategy_candidates"; items: any[]; recommendedId?: string }
   | { type: "calendar_day"; date: string; entries: any[] }
-  | { type: "phase_1_signals_ready"; data: any }
+  | { type: "phase_1_signals_ready"; data: IntelligenceReport }
   | { type: "strategy_locked"; data: any }
   | { type: "skeleton_day_planned"; data: any }
   | { type: "phase_2_complete"; data: any }
@@ -121,24 +122,57 @@ export function simulateRunStream(
 
   async function runPhase1Mock() {
     emit({ type: "phase_start", phase: 1, title: "Market Intelligence Gathering", participants: ["Perplexity API", "Reddit Scraper", "Calendarific"] });
-    for (let i = 0; i < 5; i++) {
-        await new Promise<void>((res) =>
-          schedule(() => {
-            emit({ type: "log", phase: 1, speaker: i % 2 === 0 ? "Perplexity" : "Reddit", text: `Analyzing data chunk ${i + 1}...`, ts: Date.now() });
-            res();
-          }, 350)
-        );
+    const toolLogs = [
+      { speaker: "Perplexity Research", text: "Searching recent trends, competitors, and market news." },
+      { speaker: "Reddit Scraper", text: "Scanning Reddit conversations for audience sentiment." },
+      { speaker: "Calendarific", text: "Collecting relevant calendar moments and holidays." },
+      { speaker: "Gemini Synthesizer", text: "Synthesizing the raw findings into a reviewable intelligence report." },
+    ];
+
+    for (const item of toolLogs) {
+      await new Promise<void>((res) =>
+        schedule(() => {
+          emit({ type: "log", phase: 1, speaker: item.speaker, text: item.text, ts: Date.now() });
+          res();
+        }, 350)
+      );
     }
-    
-    // Emit the phase 1 mock data
-    const mockIntelligenceData = {
-        market_implications: [
-            { id: nanoid(), title: "Rise in UGC", description: "Users prefer raw videos.", urgency: "High", category: "Trend", source: "Reddit" },
-            { id: nanoid(), title: "AI Tool Fatigue", description: "Users want simple features.", urgency: "Medium", category: "Sentiment", source: "Perplexity" }
+
+    const mockIntelligenceData: IntelligenceReport = {
+      global_intelligence: {
+        competitor_landscape: [
+          { title: "Creators are packaging tutorials as entertainment", description: "Top-performing competitors are blending education with faster hooks and stronger visual payoff.", source: "perplexity" },
         ],
-        day_capsules: [
-            { id: nanoid(), date: dayjs(params.startDateISO).format("YYYY-MM-DD"), event_name: "Startup Day", significance: "High traffic", suggested_angle: "Founder story", source: "Calendarific" }
-        ]
+        trending_topics: [
+          { title: "UGC-style proof is outperforming polished studio content", description: "Current trend coverage points to stronger engagement on relatable demos and testimonial-led clips.", source: "perplexity" },
+        ],
+        audience_sentiment: [
+          { title: "Users trust practical walkthroughs over hype", description: "Reddit discussions repeatedly ask for honest proof, setup clarity, and before/after examples.", source: "apify_reddit" },
+        ],
+        industry_news: [
+          { title: "Competitors are moving faster on feature storytelling", description: "Recent launches are framed around one concrete use case at a time instead of broad benefit claims.", source: "perplexity" },
+        ],
+        strategic_opportunities: [
+          "Lead with proof-driven hooks instead of abstract positioning.",
+          "Build a repeatable creator brief around fast setup demos.",
+        ],
+      },
+      day_capsules: [
+        {
+          day_index: 1,
+          date: dayjs(params.startDateISO).format("YYYY-MM-DD"),
+          signals: [
+            {
+              type: "event",
+              name: "Startup Day",
+              description: "A relevant moment that can support founder-led storytelling and product credibility.",
+              implication: "Use this day for behind-the-scenes or founder POV content tied to momentum and innovation.",
+              importance: "high",
+              source: "calendarific",
+            },
+          ],
+        },
+      ],
     };
     emit({ type: "phase_1_signals_ready", data: mockIntelligenceData });
     emit({ type: "status_update", status: "waiting_for_signals" });
