@@ -30,6 +30,7 @@ export default function RunPage() {
   const [selectedSkeletonDay, setSelectedSkeletonDay] = useState<CalendarEntry | null>(null);
   const [isResetting, setIsResetting] = useState(false);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+  const [creativeReviewData, setCreativeReviewData] = useState<any | null>(null);
 
   const duration = useMemo(() => ({ start: project.duration.start, end: project.duration.end }), [project.duration]);
 
@@ -299,6 +300,23 @@ export default function RunPage() {
                 run.setSignalsModalOpen(true);
                 return;
               }
+
+              if (ev.type === "phase_1_signals_ready") {
+                run.setCurrentPhase(1);
+                run.setPhaseStatus(1, "waiting_for_signals");
+                run.setSignalsData(ev.data);
+                run.setSignalsModalOpen(true);
+                return;
+              }
+
+              if (ev.type === "phase_3_creative_ready") {
+                console.log("Creative Assembly Complete:", ev.calendar);
+                run.setPhaseStatus(3, "done");
+                run.setCurrentPhase(4); 
+                setCreativeReviewData(ev.calendar); // This will trigger the UI popup!
+                return;
+              }
+
 
               switch (ev.type) {
                 case "phase_start":
@@ -572,6 +590,22 @@ export default function RunPage() {
         entry={selectedSkeletonDay} 
         onClose={() => setSelectedSkeletonDay(null)} 
       />
+
+      {creativeReviewData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-white p-8 rounded-xl shadow-2xl max-w-md w-full text-center border border-gray-200">
+              <div className="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">✨</div>
+              <h2 className="text-2xl font-black mb-2 tracking-tight">Phase 3 Complete!</h2>
+              <p className="text-gray-500 mb-6">Leo, Maria, and Isabelle have finished the creative assembly line.</p>
+              <button
+                onClick={() => setCreativeReviewData(null)}
+                className="w-full px-4 py-3 bg-black text-white font-bold rounded-lg hover:bg-gray-800 transition-colors"
+              >
+                Close Placeholder
+              </button>
+          </div>
+        </div>
+      )}
 
       {run.status === "done" && (
         <div className="flex items-center justify-between mt-8 border-t pt-4">

@@ -2,7 +2,7 @@
 import { create } from "zustand";
 import type { IntelligenceReport } from "../types/intelligence";
 
-export type PhaseStatus = "idle" | "running" | "done" | "error" | "waiting_for_selection" | "waiting_for_events" | "waiting_for_signals" | "waiting_for_strategy_approval" | "waiting_for_creative";
+export type PhaseStatus = "idle" | "running" | "done" | "error" | "waiting_for_selection" | "waiting_for_events" | "waiting_for_signals" | "waiting_for_strategy_approval" | "waiting_for_creative" | "waiting_for_creative_approval";
 
 export type TheaterLog = { phase: number; speaker: string; text: string; ts: number };
 
