@@ -8,8 +8,10 @@ export type IntelligenceSignal = {
   type: string;
   name: string;
   description: string;
-  implication: string;
-  importance: string;
+  implication?: string;
+  importance?: string;
+  significance?: string;
+  urgency?: string;
   source: string;
 };
 

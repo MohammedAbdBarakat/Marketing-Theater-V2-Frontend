@@ -121,7 +121,28 @@ export const useRunStore = create<RunState>()((set, get) => ({
     set((st) => ({ results: { ...st.results, [result.phase]: result } })),
   setSelectedStrategy: (id) => set({ selectedStrategyId: id }),
   addCalendarEntries: (date, entries) =>
-    set((st) => ({ calendar: { ...st.calendar, [date]: [...(st.calendar[date] || []), ...entries] } })),
+    set((st) => {
+      const existing = st.calendar[date] || [];
+      const merged = [...existing];
+
+      for (const entry of entries) {
+        const isDuplicate = merged.some((current) => {
+          if (current.id && entry.id && current.id === entry.id) return true;
+          return (
+            current.title === entry.title &&
+            current.channel === entry.channel &&
+            current.posting_time === entry.posting_time &&
+            current.type === entry.type
+          );
+        });
+
+        if (!isDuplicate) {
+          merged.push(entry);
+        }
+      }
+
+      return { calendar: { ...st.calendar, [date]: merged } };
+    }),
   setCalendar: (calendar) => set({ calendar }),
   setSignalsModalOpen: (isOpen) => set({ isSignalsModalOpen: isOpen }),
   setSignalsData: (data) => set({ signalsData: data }),

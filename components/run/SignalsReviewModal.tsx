@@ -12,6 +12,7 @@ interface SignalsReviewModalProps {
   open: boolean;
   data: IntelligenceReport | null;
   onConfirm: (approvedReport: IntelligenceReport) => void;
+  onClose?: () => void;
 }
 
 const GLOBAL_SECTION_META: Array<{ key: GlobalSectionKey; label: string }> = [
@@ -32,7 +33,7 @@ const EMPTY_REPORT: IntelligenceReport = {
   day_capsules: [],
 };
 
-export function SignalsReviewModal({ open, data, onConfirm }: SignalsReviewModalProps) {
+export function SignalsReviewModal({ open, data, onConfirm, onClose }: SignalsReviewModalProps) {
   const report = useMemo(() => normalizeReport(data), [data]);
 
   const allSelectableIds = useMemo(() => {
@@ -173,6 +174,16 @@ export function SignalsReviewModal({ open, data, onConfirm }: SignalsReviewModal
             >
               Clear
             </button>
+            {onClose && (
+              <button
+                type="button"
+                onClick={onClose}
+                className="ml-2 p-2 rounded-lg text-gray-400 hover:bg-gray-200 hover:text-black transition-colors flex items-center justify-center"
+                aria-label="Close"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              </button>
+            )}
           </div>
         </div>
 
@@ -345,6 +356,12 @@ function IntelligenceItemView({ item }: { item: IntelligenceItem }) {
 }
 
 function SignalView({ signal }: { signal: IntelligenceSignal }) {
+  const urgencyValue = signal.urgency || signal.importance;
+  const implicationText =
+    signal.implication ||
+    (signal.significance ? `Significance: ${signal.significance}` : "") ||
+    signal.description;
+
   return (
     <div className="space-y-3">
       <div className="flex items-start justify-between gap-3">
@@ -354,15 +371,15 @@ function SignalView({ signal }: { signal: IntelligenceSignal }) {
             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-gray-100 text-gray-700">
               {signal.type}
             </span>
-            <ImportanceBadge importance={signal.importance} />
+            <ImportanceBadge importance={urgencyValue} />
           </div>
         </div>
         <SourceBadge source={signal.source} />
       </div>
       <p className="text-sm text-gray-600 leading-relaxed">{signal.description}</p>
       <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
-        <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-gray-400 mb-1">Implication</div>
-        <p className="text-sm text-gray-800 leading-relaxed">{signal.implication}</p>
+        <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-gray-400 mb-1">Signal Insight</div>
+        <p className="text-sm text-gray-800 leading-relaxed">{implicationText}</p>
       </div>
     </div>
   );
