@@ -368,8 +368,9 @@ function SignalView({ signal }: { signal: IntelligenceSignal }) {
   );
 }
 
-function SourceBadge({ source }: { source: string }) {
-  const value = source.toLowerCase();
+function SourceBadge({ source }: { source?: string }) {
+  // Defensive check: fallback to empty string if source is undefined/null
+  const value = (source || "").toLowerCase();
 
   if (value.includes("reddit")) {
     return <span className="px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-orange-100 text-orange-800">Reddit</span>;
@@ -383,11 +384,12 @@ function SourceBadge({ source }: { source: string }) {
     return <span className="px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-green-100 text-green-800">Calendarific</span>;
   }
 
-  return <span className="px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-gray-100 text-gray-700">{source}</span>;
+  return <span className="px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-gray-100 text-gray-700">{source || "System"}</span>;
 }
 
-function ImportanceBadge({ importance }: { importance: string }) {
-  const value = importance.toLowerCase();
+function ImportanceBadge({ importance }: { importance?: string }) {
+  // Defensive check: fallback to empty string if importance is undefined/null
+  const value = (importance || "").toLowerCase();
 
   if (value === "critical") {
     return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-red-100 text-red-800">Critical</span>;
@@ -397,5 +399,5 @@ function ImportanceBadge({ importance }: { importance: string }) {
     return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-amber-100 text-amber-800">High</span>;
   }
 
-  return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-gray-100 text-gray-700">{importance}</span>;
+  return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-gray-100 text-gray-700">{importance || "Normal"}</span>;
 }
