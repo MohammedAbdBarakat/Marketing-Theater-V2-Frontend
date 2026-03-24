@@ -15,6 +15,7 @@ export type StreamEvent =
   | { type: "strategy_locked"; data: any }
   | { type: "skeleton_day_planned"; data: any }
   | { type: "phase_2_complete"; data: any }
+  | { type: "campaign_events"; days: any[] }
   | { type: "status_update"; status: string }
   | { type: "phase_3_creative_ready"; calendar: any }
   | { type: "error"; message: string }

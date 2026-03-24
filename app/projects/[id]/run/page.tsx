@@ -8,7 +8,6 @@ import { useRunStore, type CalendarEntry } from "../../../../store/useRunStore";
 import { PhaseStepper } from "../../../../components/run/PhaseStepper";
 import { MeetingTheater } from "../../../../components/run/MeetingTheater";
 import { PhaseResultCard } from "../../../../components/run/PhaseResultCard";
-import { StrategySelectModal } from "../../../../components/run/StrategySelectModal";
 import { EventsSelectionModal } from "../../../../components/run/EventsSelectionModal";
 import { SignalsReviewModal } from "../../../../components/run/SignalsReviewModal";
 import { StrategyReviewModal } from "../../../../components/run/StrategyReviewModal";
@@ -26,7 +25,6 @@ export default function RunPage() {
   const project = useProjectStore();
   const run = useRunStore();
   const [conn, setConn] = useState<"connecting" | "open" | "closed">("connecting");
-  const [strategyPrompt, setStrategyPrompt] = useState<{ items: any[]; recommendedId?: string } | null>(null);
   const [eventsPrompt, setEventsPrompt] = useState<CampaignDay[] | null>(null);
   const [selectedSkeletonDay, setSelectedSkeletonDay] = useState<CalendarEntry | null>(null);
   const [isResetting, setIsResetting] = useState(false);
@@ -34,6 +32,49 @@ export default function RunPage() {
   const [creativeReviewData, setCreativeReviewData] = useState<any | null>(null);
 
   const duration = useMemo(() => ({ start: project.duration.start, end: project.duration.end }), [project.duration]);
+  const isRunComplete = run.status === "done" || run.status === "completed";
+
+  const applyRunStatus = (status: string) => {
+    run.setStatus(status as any);
+
+    switch (status) {
+      case "waiting_for_signals":
+        run.setCurrentPhase(1);
+        run.setPhaseStatus(1, "waiting_for_signals");
+        run.setSignalsModalOpen(!!useRunStore.getState().signalsData);
+        break;
+      case "waiting_for_strategy_approval":
+        run.setCurrentPhase(2);
+        run.setPhaseStatus(2, "waiting_for_strategy_approval");
+        run.setSignalsModalOpen(false);
+        break;
+      case "waiting_for_creative":
+        run.setCurrentPhase(3);
+        run.setPhaseStatus(3, "waiting_for_creative");
+        run.setSignalsModalOpen(false);
+        break;
+      case "waiting_for_events":
+        run.setCurrentPhase(4);
+        run.setPhaseStatus(4, "waiting_for_events");
+        run.setSignalsModalOpen(false);
+        break;
+      case "running_phase_4":
+        run.setCurrentPhase(4);
+        run.setPhaseStatus(4, "running");
+        run.setSignalsModalOpen(false);
+        break;
+      case "completed":
+      case "done":
+        run.setCurrentPhase(5);
+        run.setPhaseStatus(4, "done");
+        run.setSignalsModalOpen(false);
+        setEventsPrompt(null);
+        break;
+      default:
+        run.setSignalsModalOpen(false);
+        break;
+    }
+  };
 
 
   const refreshRunDataFromDB = async (runId: string) => {
@@ -146,7 +187,6 @@ export default function RunPage() {
                   run.setPhaseStatus(p, "done");
                 }
               });
-              if (latest.results["3"]) run.setCurrentPhase(4);
             }
 
             // Hydrate Theater from chat_history if available
@@ -170,10 +210,6 @@ export default function RunPage() {
 
             if (latest.intelligenceReport) {
               run.setSignalsData(latest.intelligenceReport);
-              if (!latest.results?.["1"] && !latest.results?.["2"] && !latest.results?.["3"]) {
-                run.setCurrentPhase(1);
-                run.setPhaseStatus(1, "waiting_for_signals");
-              }
             }
           }
         }
@@ -235,19 +271,10 @@ export default function RunPage() {
         try {
           const { startRun } = await import("../../../../lib/api"); // dynamic import to avoid circ dep if any
           const startRes = await startRun(activeRunId);
-          if (startRes.status === "waiting_for_signals") {
-            run.setStatus("waiting_for_signals");
-            if (useRunStore.getState().signalsData) {
-              run.setSignalsModalOpen(true);
-            }
-          } else if (startRes.status === "waiting_for_events") {
-            run.setStatus("waiting_for_events");
-          } else {
-            run.setStatus("running");
-          }
+          applyRunStatus(startRes.status || "unknown");
         } catch (e) {
           console.warn("Start run warning:", e);
-          run.setStatus("running"); // Fallback
+          applyRunStatus("running");
         }
         setConn("open");
 
@@ -264,44 +291,9 @@ export default function RunPage() {
               // 1. Handle Status Update (Priority Override)
               if (ev.type === "status_update") {
                 authoritativeStatus = ev.status;
-                run.setStatus(ev.status); // Update global store!
-
-                if (ev.status === "waiting_for_signals") {
-                  run.setCurrentPhase(1);
-                  run.setPhaseStatus(1, "waiting_for_signals");
-                  if (useRunStore.getState().signalsData) {
-                    run.setSignalsModalOpen(true);
-                  }
-                } else {
-                  run.setSignalsModalOpen(false);
-                }
-
-                // If we are NOT waiting for selection, ensure panel is hidden
-                if (ev.status !== "waiting_for_selection") {
-                  setStrategyPrompt(null);
-                }
-
-                // If we are NOT waiting for events, hide events modal
-                // BUT: Only hide if we move PAST it (e.g. running_phase_4 or waiting_for_approval)
-                // If we transition TO waiting_for_events, we want to KEEP the modal if it's open.
-                if (ev.status !== "waiting_for_events" && ev.status !== "waiting_for_selection") { // Keep logic consistent or strictly based on status
-                  // actually, we should only clear if we are moving to a "running" or "done" state that implies we passed it.
-                  // But let's trust the modal's own Close/Confirm logic to clear it, primarily.
-                  // However, if we receive "running_phase_4", we definitely want to close it.
-                  if (ev.status === "running_phase_4" || ev.status === "completed") {
-                    setEventsPrompt(null);
-                  }
-                }
+                applyRunStatus(ev.status);
                 return;
               }
-              if (ev.type === "phase_1_signals_ready") {
-                run.setCurrentPhase(1);
-                run.setPhaseStatus(1, "waiting_for_signals");
-                run.setSignalsData(ev.data);
-                run.setSignalsModalOpen(true);
-                return;
-              }
-
               if (ev.type === "phase_1_signals_ready") {
                 run.setCurrentPhase(1);
                 run.setPhaseStatus(1, "waiting_for_signals");
@@ -348,8 +340,8 @@ export default function RunPage() {
                   run.addCalendarEntries(parsedDate, [mappedDay]);
                   break;
                 case "phase_2_complete":
-                  run.setPhaseStatus(4, "done");
-                  run.setCurrentPhase(5); // Assuming waiting for creative is phase 5 or done
+                  run.setPhaseStatus(2, "done");
+                  run.setCurrentPhase(3);
                   break;
                 case "phase_result":
                   run.setResult({ phase: ev.phase, summary: ev.summary, artifacts: ev.artifacts, candidates: ev.candidates });
@@ -357,11 +349,8 @@ export default function RunPage() {
                   if (ev.phase < 3) run.setCurrentPhase((ev.phase + 1) as any);
                   break;
                 case "strategy_candidates":
-                  // Suppress stale events on replay if we know we are done
-                  if (authoritativeStatus === "completed" || authoritativeStatus === "running_phase_4") {
-                    return;
-                  }
-                  setStrategyPrompt({ items: ev.items, recommendedId: ev.recommendedId });
+                  // Legacy event. Ignored in upgraded flow (war-room emits `strategy_locked`).
+                  if (authoritativeStatus === "completed" || authoritativeStatus === "running_phase_4") return;
                   break;
                 case "calendar_day":
                   run.setPhaseStatus(4, "running");
@@ -401,9 +390,7 @@ export default function RunPage() {
                   break;
 
                 case "done":
-                  run.setPhaseStatus(4, "done");
-                  run.setCurrentPhase(5);
-                  run.setStatus("done");
+                  applyRunStatus("completed");
                   setConn("closed");
                   await refreshRunDataFromDB(activeRunId!);
                   break;
@@ -441,20 +428,13 @@ export default function RunPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  async function handleConfirmStrategySelection(idSelected: string) {
-    run.setSelectedStrategy(idSelected);
-    if (run.runId) await selectStrategy(run.runId, idSelected);
-    setStrategyPrompt(null);
-  }
-
-
   async function handleConfirmSignals(approvedReport: IntelligenceReport) {
     if (run.runId) {
       await confirmSignals(run.runId, { intelligence_report: approvedReport });
     }
     run.setSignalsData(approvedReport);
     run.setSignalsModalOpen(false);
-    run.setStatus("running");
+    applyRunStatus("running");
     run.setPhaseStatus(1, "done"); // Unblocks mock flow
   }
 
@@ -526,36 +506,14 @@ export default function RunPage() {
         </div>
       )}
 
-      {/* DEBUG LOGS */}
-      {(() => {
-        console.log("RENDER DEBUG:", {
-          status: run.status,
-          hasStrategyPrompt: !!strategyPrompt,
-          candidates: run.results[1]?.candidates,
-          hasCandidates: !!(run.results[1]?.candidates && run.results[1].candidates.length > 0)
-        });
-        return null;
-      })()}
-
-      {(strategyPrompt || (run.status === "waiting_for_selection" && run.results[1]?.candidates)) && (
-        <StrategySelectModal
-          open
-          items={strategyPrompt?.items || run.results[1]?.candidates || []}
-          recommendedId={strategyPrompt?.recommendedId}
-          brief={project.strategy}
-          results={run.results}
-          onSelect={handleConfirmStrategySelection}
-          onClose={() => setStrategyPrompt(null)}
-        />
-      )}
-
-      {(eventsPrompt || (run.status === "waiting_for_events" && eventsPrompt)) && (
+      {run.status === "waiting_for_events" && !!eventsPrompt && (
         <EventsSelectionModal
           isOpen={!!eventsPrompt}
           days={eventsPrompt}
           onConfirm={async (selected) => {
             if (run.runId) await confirmEventSelection(run.runId, selected);
             setEventsPrompt(null);
+            applyRunStatus("running_phase_4");
           }}
           onClose={() => setEventsPrompt(null)}
         />
@@ -573,9 +531,16 @@ export default function RunPage() {
         onConfirm={async (editedData) => {
           if (run.runId) {
             await confirmStrategy(run.runId, editedData);
+            const selectedId =
+              typeof editedData?.strategy_title === "string" && editedData.strategy_title.trim()
+                ? editedData.strategy_title.trim()
+                : "Master Strategy";
+            await selectStrategy(run.runId, selectedId);
+            run.setSelectedStrategy(selectedId);
           }
           run.setStrategyToReview(null);
-          run.setPhaseStatus(2, "done"); // Unblocks mock flow Phase 2 Stage B
+          run.setPhaseStatus(2, "done");
+          applyRunStatus("waiting_for_events");
         }} 
       />
 
@@ -595,7 +560,7 @@ export default function RunPage() {
         }}
       />
 
-      {run.status === "done" && (
+      {isRunComplete && (
         <div className="flex items-center justify-between mt-8 border-t pt-4">
           <div className="text-gray-600 text-sm">
             Result: Calendar generated.
