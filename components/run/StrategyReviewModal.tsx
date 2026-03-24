@@ -5,9 +5,10 @@ interface StrategyReviewModalProps {
     open: boolean;
     data: any | null; // The MasterStrategy object
     onConfirm: (editedData: any) => void;
+    onClose?: () => void;
 }
 
-export function StrategyReviewModal({ open, data, onConfirm }: StrategyReviewModalProps) {
+export function StrategyReviewModal({ open, data, onConfirm, onClose }: StrategyReviewModalProps) {
     const [strategy, setStrategy] = useState<any>(null);
 
     useEffect(() => {
@@ -94,6 +95,16 @@ export function StrategyReviewModal({ open, data, onConfirm }: StrategyReviewMod
                             The War Room has synthesized the intelligence into a core strategy. Review and tune the parameters below before confirming. This will dictate all content generation.
                         </p>
                     </div>
+                    {onClose && (
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="p-2 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-black transition-colors"
+                            aria-label="Close"
+                        >
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        </button>
+                    )}
                 </div>
 
                 {/* Content Body */}

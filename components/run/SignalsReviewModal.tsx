@@ -12,6 +12,7 @@ interface SignalsReviewModalProps {
   open: boolean;
   data: IntelligenceReport | null;
   onConfirm: (approvedReport: IntelligenceReport) => void;
+  onClose?: () => void;
 }
 
 const GLOBAL_SECTION_META: Array<{ key: GlobalSectionKey; label: string }> = [
@@ -32,7 +33,7 @@ const EMPTY_REPORT: IntelligenceReport = {
   day_capsules: [],
 };
 
-export function SignalsReviewModal({ open, data, onConfirm }: SignalsReviewModalProps) {
+export function SignalsReviewModal({ open, data, onConfirm, onClose }: SignalsReviewModalProps) {
   const report = useMemo(() => normalizeReport(data), [data]);
 
   const allSelectableIds = useMemo(() => {
@@ -173,6 +174,16 @@ export function SignalsReviewModal({ open, data, onConfirm }: SignalsReviewModal
             >
               Clear
             </button>
+            {onClose && (
+              <button
+                type="button"
+                onClick={onClose}
+                className="ml-2 p-2 rounded-lg text-gray-400 hover:bg-gray-200 hover:text-black transition-colors flex items-center justify-center"
+                aria-label="Close"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              </button>
+            )}
           </div>
         </div>
 

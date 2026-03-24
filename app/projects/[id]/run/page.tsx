@@ -441,11 +441,17 @@ export default function RunPage() {
         </div>
       )}
 
-      <SignalsReviewModal open={run.isSignalsModalOpen} data={run.signalsData} onConfirm={handleConfirmSignals} />
+      <SignalsReviewModal 
+        open={run.isSignalsModalOpen} 
+        data={run.signalsData} 
+        onConfirm={handleConfirmSignals} 
+        onClose={() => run.setSignalsModalOpen(false)}
+      />
 
       <StrategyReviewModal
         open={!!run.strategyToReview}
         data={run.strategyToReview}
+        onClose={() => run.setStrategyToReview(null)}
         onConfirm={async (editedData) => {
           if (run.runId) {
             await confirmStrategy(run.runId, editedData);
