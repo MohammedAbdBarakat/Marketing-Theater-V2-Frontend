@@ -345,6 +345,12 @@ function IntelligenceItemView({ item }: { item: IntelligenceItem }) {
 }
 
 function SignalView({ signal }: { signal: IntelligenceSignal }) {
+  const urgencyValue = signal.urgency || signal.importance;
+  const implicationText =
+    signal.implication ||
+    (signal.significance ? `Significance: ${signal.significance}` : "") ||
+    signal.description;
+
   return (
     <div className="space-y-3">
       <div className="flex items-start justify-between gap-3">
@@ -354,15 +360,15 @@ function SignalView({ signal }: { signal: IntelligenceSignal }) {
             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-gray-100 text-gray-700">
               {signal.type}
             </span>
-            <ImportanceBadge importance={signal.importance} />
+            <ImportanceBadge importance={urgencyValue} />
           </div>
         </div>
         <SourceBadge source={signal.source} />
       </div>
       <p className="text-sm text-gray-600 leading-relaxed">{signal.description}</p>
       <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
-        <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-gray-400 mb-1">Implication</div>
-        <p className="text-sm text-gray-800 leading-relaxed">{signal.implication}</p>
+        <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-gray-400 mb-1">Signal Insight</div>
+        <p className="text-sm text-gray-800 leading-relaxed">{implicationText}</p>
       </div>
     </div>
   );

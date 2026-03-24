@@ -13,6 +13,7 @@ export type StreamEvent =
   | { type: "calendar_day"; date: string; entries: any[] }
   | { type: "phase_1_signals_ready"; data: IntelligenceReport }
   | { type: "strategy_locked"; data: any }
+  | { type: "skeleton_day_progress"; data: any }
   | { type: "skeleton_day_planned"; data: any }
   | { type: "phase_2_complete"; data: any }
   | { type: "campaign_events"; days: any[] }
@@ -244,6 +245,14 @@ export function simulateRunStream(
                reasoning: { goal_reason: "Start strong", topic_reason: "Hook users", type_reason: "Algorithmic preference", time_reason: "Peak hours", signals_used: [] },
                creative_slots: { hook: null, caption: null, visual_direction: null, hashtags: null, cta: null }
            };
+           emit({
+             type: "skeleton_day_progress",
+             data: {
+               day_index: dayIndex,
+               date: cursor.format("YYYY-MM-DD"),
+               status: "planning",
+             },
+           });
            
            emit({ type: "skeleton_day_planned", data: mockDay });
            
@@ -253,8 +262,7 @@ export function simulateRunStream(
        }
 
        emit({ type: "phase_2_complete", data: { master_strategy: {}, skeleton: [] } });
-       emit({ type: "status_update", status: "waiting_for_creative" });
-       emit({ type: "done" });
+       emit({ type: "status_update", status: "running" });
   }
 
   async function runPhase3Mock() {
@@ -310,7 +318,7 @@ export function simulateRunStream(
     };
 
     emit({ type: "phase_3_creative_ready", calendar: mockCreativeCalendar });
-    emit({ type: "status_update", status: "waiting_for_creative_approval" });
+    emit({ type: "status_update", status: "waiting_for_creative" });
   }
 
   async function orchestrate() {

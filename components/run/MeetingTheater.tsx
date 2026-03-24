@@ -15,7 +15,7 @@ export function MeetingTheater({ logs, currentPhase, isDone }: MeetingTheaterPro
   const [viewMode, setViewMode] = useState<ViewMode>("default");
   const [selectedTab, setSelectedTab] = useState<number | null>(null);
   const [reduceMotion, setReduce] = useState(false);
-  const normalizedCurrentPhase = currentPhase > 4 ? 4 : currentPhase || 1;
+  const normalizedCurrentPhase = currentPhase > 3 ? 3 : currentPhase || 1;
   const activeTab = selectedTab ?? normalizedCurrentPhase;
 
   // Auto-scroll logic (scoped to the active tab's logs)
@@ -40,7 +40,7 @@ export function MeetingTheater({ logs, currentPhase, isDone }: MeetingTheaterPro
       >
         <div className="flex items-center gap-3">
           <span className="text-sm font-semibold text-gray-800">Meeting Theater</span>
-          {currentPhase !== 5 && (
+          {currentPhase !== 3 && (
             <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
               Phase {activeTab} • {activeLogs.length} msgs
             </span>
@@ -61,7 +61,7 @@ export function MeetingTheater({ logs, currentPhase, isDone }: MeetingTheaterPro
 
           {/* Phase Tabs */}
           <div className="flex items-center gap-1 bg-gray-200/50 p-1 rounded-lg">
-            {[1, 2, 3, 4].map((p) => (
+            {[1, 2, 3].map((p) => (
               <button
                 key={p}
                 onClick={() => setSelectedTab(p)}
