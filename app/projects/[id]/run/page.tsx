@@ -13,6 +13,7 @@ import { EventsSelectionModal } from "../../../../components/run/EventsSelection
 import { SignalsReviewModal } from "../../../../components/run/SignalsReviewModal";
 import { StrategyReviewModal } from "../../../../components/run/StrategyReviewModal";
 import { SkeletonDayModal } from "../../../../components/run/SkeletonDayModal";
+import { CreativeReviewModal } from "../../../../components/run/CreativeReviewModal";
 import { confirmSignals, confirmStrategy } from "../../../../lib/api";
 import { selectStrategy, getLatestRunForProject, resetPhase4, downloadReport, confirmEventSelection } from "../../../../lib/api";
 import type { CampaignDay } from "../../../../types/events";
@@ -422,6 +423,7 @@ export default function RunPage() {
             endDateISO: duration.end,
             hasConfirmedSignals: () => useRunStore.getState().phases[1] === "done", // Wait until phase 1 is marked done (which happens when they confirm)
             hasConfirmedStrategy: () => useRunStore.getState().phases[2] === "done", // Wait until Phase 2 Stage A is marked done
+            hasConfirmedSkeleton: () => useRunStore.getState().phases[4] === "done", // <-- Added this
           }
         );
 
@@ -591,21 +593,11 @@ export default function RunPage() {
         onClose={() => setSelectedSkeletonDay(null)} 
       />
 
-      {creativeReviewData && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-white p-8 rounded-xl shadow-2xl max-w-md w-full text-center border border-gray-200">
-              <div className="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">✨</div>
-              <h2 className="text-2xl font-black mb-2 tracking-tight">Phase 3 Complete!</h2>
-              <p className="text-gray-500 mb-6">Leo, Maria, and Isabelle have finished the creative assembly line.</p>
-              <button
-                onClick={() => setCreativeReviewData(null)}
-                className="w-full px-4 py-3 bg-black text-white font-bold rounded-lg hover:bg-gray-800 transition-colors"
-              >
-                Close Placeholder
-              </button>
-          </div>
-        </div>
-      )}
+      <CreativeReviewModal 
+        isOpen={!!creativeReviewData}
+        data={creativeReviewData}
+        onClose={() => setCreativeReviewData(null)}
+      />
 
       {run.status === "done" && (
         <div className="flex items-center justify-between mt-8 border-t pt-4">
