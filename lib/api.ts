@@ -62,9 +62,11 @@ export type RunSnapshot = {
   runId: string;
   projectId: string;
   createdAt: string;
-  results: Record<string, PhaseResult>; // "1","2","3","4"
+  results: Record<string, any>;
   selectedStrategyId?: string;
   calendar: Record<string, CalendarEntry[]>; // date -> entries
+  chat_history?: Record<string, any>;
+  snapshot?: Record<string, any>;
   intelligenceReport?: IntelligenceReport | null;
 };
 
