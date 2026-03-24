@@ -32,6 +32,18 @@ export type CalendarEntry = {
     time_reason?: string;
     signals_used?: string[];
   };
+  creative?: {
+    hook?: string;
+    caption?: string;
+    hashtags?: string[];
+    cta?: string;
+    copywriting_reasoning?: string;
+    visual_direction?: {
+      mood?: string;
+      style_hint?: string;
+      visual_reasoning?: string;
+    }
+  };
 };
 
 export type RunState = {

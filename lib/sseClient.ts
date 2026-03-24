@@ -253,7 +253,7 @@ export function simulateRunStream(
 
        emit({ type: "phase_2_complete", data: { master_strategy: {}, skeleton: [] } });
        emit({ type: "status_update", status: "waiting_for_creative" });
-       emit({ type: "done" });
+      //  emit({ type: "done" });
   }
 
   async function runPhase3Mock() {

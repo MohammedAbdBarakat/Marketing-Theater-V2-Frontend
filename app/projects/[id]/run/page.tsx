@@ -313,7 +313,6 @@ export default function RunPage() {
               if (ev.type === "phase_3_creative_ready") {
                 console.log("Creative Assembly Complete:", ev.calendar);
                 run.setPhaseStatus(3, "done");
-                run.setCurrentPhase(4); 
                 setCreativeReviewData(ev.calendar); // This will trigger the UI popup!
                 return;
               }
@@ -466,14 +465,7 @@ export default function RunPage() {
         <ConnectionStatus status={conn} />
       </div>
       <MeetingTheater logs={run.theater} currentPhase={run.currentPhase || 1} isDone={run.status === "done"} />
-      <div className="grid gap-4 md:grid-cols-3">
-        {[1, 2, 3].map((p) => {
-          const res = run.results[p as 1 | 2 | 3 | 4];
-          if (!res) return <div key={p} className="border rounded-lg p-4 text-sm text-gray-500">Waiting for Phase {p}...</div>;
-          return <PhaseResultCard key={p} phase={p} summary={res.summary} artifacts={res.artifacts} />;
-        })}
-      </div>
-
+   
       {/* NEW: Phase 2 Stage B - Skeleton Generation Live View */}
       {Object.keys(run.calendar).length > 0 && (
         <div className="border rounded-lg p-6 bg-white shadow-sm mt-4 lg:col-span-3">
@@ -596,7 +588,11 @@ export default function RunPage() {
       <CreativeReviewModal 
         isOpen={!!creativeReviewData}
         data={creativeReviewData}
-        onClose={() => setCreativeReviewData(null)}
+        onClose={() => {
+          setCreativeReviewData(null);
+          run.setStatus("done");
+          setConn("closed");
+        }}
       />
 
       {run.status === "done" && (
