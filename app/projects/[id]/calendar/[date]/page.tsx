@@ -8,16 +8,50 @@ import { useRunStore, type CalendarEntry } from "../../../../../store/useRunStor
 import { getLatestRunForProject } from "../../../../../lib/api";
 import { StudioModal } from "../../../../../components/studio/StudioModal";
 
-function defaultBaseText(entry: CalendarEntry) {
-  return [
-    `Create assets for this calendar entry:`,
-    `- Date: ${entry.date}`,
-    `- Channel: ${entry.channel}`,
-    `- Type: ${entry.type}`,
-    `- Title: ${entry.title}`,
-    ``,
-    `Write in brand voice and include a clear CTA.`,
-  ].join("\n");
+// ✨ NEW: Mega-Prompt Builder combining Phase 1, Phase 2, and Phase 3!
+function defaultBaseText(entry: CalendarEntry, signalsData: any) {
+  const parts = [];
+
+  parts.push(`Please generate a high-end ${entry.type} for ${entry.channel}.`);
+  parts.push(``);
+
+  // --- PHASE 1: MARKET INTELLIGENCE ---
+  if (signalsData && signalsData.day_capsules) {
+    const dayCapsule = signalsData.day_capsules.find((c: any) => c.date === entry.date);
+    if (dayCapsule && dayCapsule.signals && dayCapsule.signals.length > 0) {
+      parts.push(`[PHASE 1: MARKET & EVENT SIGNALS]`);
+      dayCapsule.signals.forEach((sig: any) => {
+        parts.push(`- ${sig.name} (${sig.type}): ${sig.description}`);
+        if (sig.implication) parts.push(`  ↳ Strategy Implication: ${sig.implication}`);
+      });
+      parts.push(``);
+    }
+  }
+
+  // --- PHASE 2: STRATEGIC REASONING ---
+  parts.push(`[PHASE 2: STRATEGIC FOUNDATION]`);
+  parts.push(`Topic: ${entry.title}`);
+  if (entry.goal) parts.push(`Goal: ${entry.goal}`);
+  if (entry.reasoning) {
+    if (entry.reasoning.topic_reason) parts.push(`Topic Strategy: ${entry.reasoning.topic_reason}`);
+    if (entry.reasoning.type_reason) parts.push(`Format Strategy: ${entry.reasoning.type_reason}`);
+  }
+  parts.push(``);
+
+  // --- PHASE 3: CREATIVE DIRECTION ---
+  if (entry.creative) {
+    parts.push(`[PHASE 3: CREATIVE DIRECTION]`);
+    parts.push(`Visual Mood: ${entry.creative.visual_direction?.mood || 'Standard'}`);
+    parts.push(`Visual Hint: ${entry.creative.visual_direction?.style_hint || 'No hint provided'}`);
+    parts.push(`Hook: "${entry.creative.hook}"`);
+    parts.push(`Caption: "${entry.creative.caption}"`);
+    parts.push(`CTA: "${entry.creative.cta}"`);
+    parts.push(``);
+  }
+
+  parts.push(`Ensure the final visual aesthetic perfectly aligns with the Strategic Foundation and the Visual Mood requested above.`);
+
+  return parts.join("\n");
 }
 
 export default function CalendarDayPage() {
@@ -47,8 +81,6 @@ export default function CalendarDayPage() {
 
         const snap = await getLatestRunForProject(id);
 
-        // Helper to normalize keys (e.g. "2026-01-21 00:00:00" -> "2026-01-21")
-        // Duplicated from calendar/page.tsx to ensure consistent behavior on direct reload
         const normalize = (cal: Record<string, CalendarEntry[]>) => {
           const norm: Record<string, CalendarEntry[]> = {};
           if (!cal) return norm;
@@ -163,13 +195,14 @@ export default function CalendarDayPage() {
       {studioOpen && selectedForStudio && (
         <StudioModal
           assetId={selectedForStudio.id}
-          runId={run.runId || "mock-run-id"} // Safe fallback or ensure runId is present
+          runId={run.runId || "mock-run-id"}
           initialContext={{
             title: selectedForStudio.title,
             channel: selectedForStudio.channel,
             type: selectedForStudio.type,
-            date: selectedForStudio.date, // Pass date explicitly
-            baseText: defaultBaseText(selectedForStudio) // Or fetch real base text if stored
+            date: selectedForStudio.date,
+            // ✨ PASSING IN ALL THE INTELLIGENCE HERE ✨
+            baseText: defaultBaseText(selectedForStudio, run.signalsData) 
           }}
           onClose={() => setStudioOpen(false)}
         />

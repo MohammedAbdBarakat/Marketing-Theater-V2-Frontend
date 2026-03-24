@@ -214,7 +214,7 @@ export default function RunPage() {
               if (ev.type === "phase_3_creative_ready") {
                 run.setCurrentPhase(3);
                 run.setPhaseStatus(3, "done");
-                setCreativeReviewData(ev.calendar);
+                setCreativeReviewData(ev.calendar); // This will trigger the UI popup!
                 return;
               }
 
@@ -357,7 +357,6 @@ export default function RunPage() {
         <PhaseStepper phases={run.phases} current={run.currentPhase || 1} phase2Stage={phase2Stage} />
         <ConnectionStatus status={conn} />
       </div>
-
       <MeetingTheater logs={run.theater} currentPhase={run.currentPhase || 1} isDone={isRunComplete} />
 
       <div className="grid gap-4 md:grid-cols-4">
@@ -375,6 +374,7 @@ export default function RunPage() {
         />
       </div>
 
+      {/* NEW: Phase 2 Stage B - Skeleton Generation Live View */}
       {Object.keys(run.calendar).length > 0 && (
         <div className="border rounded-lg p-6 bg-white shadow-sm mt-4 lg:col-span-3">
           <div className="flex justify-between items-center mb-4 border-b border-gray-100 pb-3">
@@ -419,7 +419,7 @@ export default function RunPage() {
                                 {entry.channel || "Platform"}
                               </span>
                               <div className="absolute right-0 top-0 text-gray-300 group-hover:text-black transition-colors">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/></svg>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h6v6" /><path d="M9 21H3v-6" /><path d="M21 3l-7 7" /><path d="M3 21l7-7" /></svg>
                               </div>
                             </div>
                           </div>
@@ -461,7 +461,11 @@ export default function RunPage() {
       <CreativeReviewModal
         isOpen={!!creativeReviewData}
         data={creativeReviewData}
-        onClose={() => setCreativeReviewData(null)}
+        onClose={() => {
+          setCreativeReviewData(null);
+          run.setStatus("done");
+          setConn("closed");
+        }}
       />
     </div>
   );
