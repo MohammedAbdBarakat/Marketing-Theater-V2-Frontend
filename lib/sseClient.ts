@@ -33,6 +33,7 @@ export function simulateRunStream(
     endDateISO: string;
     hasConfirmedSignals?: () => boolean;
     hasConfirmedStrategy?: () => boolean;
+    hasConfirmedSkeleton?: () => boolean;
   },
   cb: Callbacks
 ): { stop: () => void; skipPhase: (phase: number) => void } {
@@ -256,10 +257,67 @@ export function simulateRunStream(
        emit({ type: "done" });
   }
 
+  async function runPhase3Mock() {
+    // Small pause to simulate the transition from Phase 2 to Phase 3
+    await new Promise<void>((r) => schedule(() => r(), 1500));
+    if (stopped) return;
+
+    emit({ type: "status_update", status: "running" });
+    emit({ type: "phase_start", phase: 3, title: "Creative Production & Polish", participants: ["Leo (Copywriter)", "Maria (Art Director)", "Isabelle (Creative Director)"] });
+    
+    // Linear Theater Logs (Leo -> Maria -> Isabelle)
+    const logs = [
+      { phase: 3, speaker: "Leo (Copywriter)", text: "Drafting the hook for the Sunset Micro-Charter. Focusing on the sensory experience of Dubai's golden hour to drive exclusivity." },
+      { phase: 3, speaker: "Maria (Art Director)", text: "Building the visual mood board. We need an ultra-luxurious, warm-toned drone shot that complements Leo's copy." },
+      { phase: 3, speaker: "Isabelle (Creative Director)", text: "Reviewing Leo and Maria's work. Tweaking the hook to sound slightly more high-end. Everything aligns with the brand DNA. Approved." }
+    ];
+
+    for (const log of logs) {
+      await new Promise<void>((res) =>
+        schedule(() => {
+          emit({ type: "log", ...log, ts: Date.now() });
+          res();
+        }, 1200 + Math.random() * 500) // Slightly slower pacing so user can read them
+      );
+    }
+
+    // Realistic Dummy Data!
+    const targetDate = dayjs(params.startDateISO).format("YYYY-MM-DD");
+    const mockCreativeCalendar = {
+      [targetDate]: [
+        {
+          skeleton: {
+            day_index: 1,
+            date: targetDate,
+            platform: "instagram",
+            content_type: "VIDEO",
+            topic: "Sunset Micro-Charter Experience"
+          },
+          creative: {
+            hook: "Dubai's golden hour, amplified. ✨",
+            caption: "Imagine: The iconic Dubai skyline painted in fiery hues, viewed from the deck of your private luxury yacht. Escape the ordinary and elevate your evening with our exclusive 3-hour micro-charters. Unmatched service, unforgettable views.",
+            hashtags: ["#JumeirahYachts", "#DubaiSunset", "#LuxuryLifestyle", "#DubaiMarina"],
+            cta: "Click the link in bio to reserve your evening.",
+            copywriting_reasoning: "Uses sensory language ('fiery hues') to paint a picture, instantly followed by a clear, exclusive solution (micro-charter).",
+            visual_direction: {
+              "mood": "Ultra-luxurious, intimate, and radiant.",
+              "style_hint": "Breathtaking drone tracking shot of the yacht cutting through golden water, transitioning to a slow-motion close-up of champagne toasting on the aft deck.",
+              "visual_reasoning": "The golden hour lighting establishes a premium, aspirational vibe that directly matches the 'amplified' hook."
+            }
+          }
+        }
+      ]
+    };
+
+    emit({ type: "phase_3_creative_ready", calendar: mockCreativeCalendar });
+    emit({ type: "status_update", status: "waiting_for_creative_approval" });
+  }
+
   async function orchestrate() {
     await runPhase1Mock();
     await runPhase2StageA();
     await runPhase2StageB();
+    await runPhase3Mock();
   }
 
   orchestrate();
@@ -393,6 +451,7 @@ export function connectStream(
     endDateISO: string;
     hasConfirmedSignals?: () => boolean;
     hasConfirmedStrategy?: () => boolean;
+    hasConfirmedSkeleton?: () => boolean;
   }
 ) {
   if (IS_REMOTE) {
