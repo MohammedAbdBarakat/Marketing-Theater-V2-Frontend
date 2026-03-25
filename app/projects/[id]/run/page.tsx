@@ -85,7 +85,7 @@ export default function RunPage() {
   }, [run.calendar]);
 
   const isRunComplete =
-    run.status === "waiting_for_creative" || run.status === "done" || run.status === "completed";
+    run.status === "done" || run.status === "completed";
 
   const applyRunStatus = (status: string) => {
     run.setStatus(status as any);
@@ -102,12 +102,6 @@ export default function RunPage() {
         run.setPhaseStatus(2, "waiting_for_strategy_approval");
         run.setSignalsModalOpen(false);
         setPhase2Stage("2a");
-        break;
-      case "waiting_for_creative":
-        run.setCurrentPhase(3);
-        run.setPhaseStatus(2, "done");
-        run.setPhaseStatus(3, "waiting_for_creative");
-        run.setSignalsModalOpen(false);
         break;
       case "running":
         run.setSignalsModalOpen(false);

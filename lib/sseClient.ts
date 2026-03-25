@@ -318,7 +318,7 @@ export function simulateRunStream(
     };
 
     emit({ type: "phase_3_creative_ready", calendar: mockCreativeCalendar });
-    emit({ type: "status_update", status: "waiting_for_creative" });
+    emit({ type: "status_update", status: "completed" });
   }
 
   async function orchestrate() {
