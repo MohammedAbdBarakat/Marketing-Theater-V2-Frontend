@@ -351,7 +351,13 @@ export default function RunPage() {
         <PhaseStepper phases={run.phases} current={run.currentPhase || 1} phase2Stage={phase2Stage} />
         <ConnectionStatus status={conn} />
       </div>
-      <MeetingTheater logs={run.theater} currentPhase={run.currentPhase || 1} isDone={isRunComplete} />
+      <MeetingTheater
+        logs={run.theater}
+        currentPhase={run.currentPhase || 1}
+        isDone={isRunComplete}
+        calendar={run.calendar}
+        onSkeletonClick={setSelectedSkeletonDay}
+      />
 
       <div className="grid gap-4 md:grid-cols-4">
         <StatusCard title="Phase 1 · Intelligence" status={run.phases[1]} />
@@ -368,74 +374,7 @@ export default function RunPage() {
         />
       </div>
 
-      {/* NEW: Phase 2 Stage B - Skeleton Generation Live View */}
-      {Object.keys(run.calendar).length > 0 && (
-        <div className="border rounded-lg p-6 bg-white shadow-sm mt-4 lg:col-span-3">
-          <div className="flex justify-between items-center mb-4 border-b border-gray-100 pb-3">
-            <h3 className="text-lg font-black tracking-tight">Phase 2b: Skeleton Distribution</h3>
-            <span className="text-xs font-bold px-3 py-1 bg-black text-white rounded-full">
-              {Object.keys(run.calendar).length} Days Planned
-            </span>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
-            {Object.entries(run.calendar)
-              .sort(([a], [b]) => a.localeCompare(b))
-              .map(([date, entries]) => {
-                const dayObj = new Date(date);
-                const dayNum = dayObj.getDate() || date.split("-")[2];
-                const dayName =
-                  dayObj.toLocaleDateString("en-US", { weekday: "short" }) !== "Invalid Date"
-                    ? dayObj.toLocaleDateString("en-US", { weekday: "short" })
-                    : "Day";
-
-                return (
-                  <div
-                    key={date}
-                    className="border border-gray-200 rounded p-3 flex flex-col gap-2 bg-gray-50 hover:border-black transition-colors relative overflow-hidden group"
-                  >
-                    <div className="flex justify-between items-center border-b border-gray-200 pb-2 mb-1">
-                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{dayName}</span>
-                      <span className="text-lg font-black text-black">{dayNum}</span>
-                    </div>
-                    <div className="space-y-2">
-                      {entries.map((entry, idx) => (
-                        <div
-                          key={`${entry.id}-${idx}`}
-                          onClick={() => setSelectedSkeletonDay(entry)}
-                          className="bg-white rounded-md border border-gray-200 shadow-sm overflow-hidden group hover:border-black transition-colors cursor-pointer active:scale-[0.98]"
-                        >
-                          <div className="flex justify-between items-start p-2.5 border-b border-gray-100 bg-gray-50/50">
-                            <div className="flex flex-col gap-1 w-full relative">
-                              <span className="text-[9px] font-black uppercase text-gray-500 tracking-wider">
-                                Goal: {entry.goal || "Draft"}
-                              </span>
-                              <span className="text-xs font-bold text-black capitalize pr-6">
-                                {entry.channel || "Platform"}
-                              </span>
-                              <div className="absolute right-0 top-0 text-gray-300 group-hover:text-black transition-colors">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h6v6" /><path d="M9 21H3v-6" /><path d="M21 3l-7 7" /><path d="M3 21l7-7" /></svg>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="p-2.5">
-                            <h4 className="font-bold text-sm text-gray-900 leading-snug line-clamp-2" title={entry.title}>
-                              {entry.title || "Draft"}
-                            </h4>
-                          </div>
-                        </div>
-                      ))}
-                      {entries.length === 0 && (
-                        <div className="text-xs text-gray-400 italic text-center py-2">No content</div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-          </div>
-        </div>
-      )}
-
-      <SignalsReviewModal 
+      <SignalsReviewModal
         open={run.isSignalsModalOpen} 
         data={run.signalsData} 
         onConfirm={handleConfirmSignals} 

@@ -26,7 +26,8 @@ export function MeetingTheater({ logs, currentPhase, isDone, calendar = {}, onSk
   const lastLogIndex = activeLogs.length - 1;
 
   // Check if we have calendar data to trigger the split screen
-  const hasCalendar = Object.keys(calendar).length > 0;
+  // Only show the calendar if we are actively viewing the Phase 3 tab
+  const hasCalendar = Object.keys(calendar).length > 0 && activeTab === 3;
 
   useEffect(() => {
     if (scrollRef.current) {
