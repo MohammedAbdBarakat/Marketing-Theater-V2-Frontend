@@ -696,6 +696,20 @@ export async function getLatestRunForProject(
   )[0]!;
 }
 
+export async function getToolResultsList(runId: string): Promise<any[]> {
+  if (IS_REMOTE) {
+    return http(`/runs/${runId}/tool-results`);
+  }
+  return [];
+}
+
+export async function getToolResultDetail(runId: string, toolResultId: string): Promise<any> {
+  if (IS_REMOTE) {
+    return http(`/runs/${runId}/tool-results/${toolResultId}`);
+  }
+  return null;
+}
+
 export async function savePhaseResult(
   runId: string,
   result: PhaseResult

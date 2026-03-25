@@ -36,8 +36,8 @@ function renderToolData(toolName: string, data: any) {
       <ul className="space-y-1.5">
         {data.insights.map((item: any, i: number) => (
           <li key={i} className="text-[11px] sm:text-xs text-gray-700">
-            <span className="font-bold text-gray-900">{item.title}</span>
-            <p className="text-gray-500 mt-0.5 leading-snug">{item.description}</p>
+            <span className="font-bold text-gray-900">{item.title || item.trend_title}</span>
+            <p className="text-gray-500 mt-0.5 leading-snug">{item.description || item.data_point}</p>
           </li>
         ))}
       </ul>
@@ -50,10 +50,17 @@ function renderToolData(toolName: string, data: any) {
         {data.audience_discussions.map((item: any, i: number) => (
           <li key={i} className="text-[11px] sm:text-xs text-gray-700">
             <span className="font-bold text-gray-900">{item.title}</span>
-            <div className="flex items-center gap-2 mt-0.5">
-              <span className="text-[10px] text-gray-400">{item.subreddit}</span>
-              <span className={`text-[10px] font-bold ${item.sentiment === "positive" ? "text-green-600" : "text-red-500"}`}>{item.sentiment}</span>
-              <span className="text-[10px] text-gray-400">▲ {item.upvotes}</span>
+            {item.discussion && (
+              <p className="text-gray-500 mt-0.5 text-[10px] line-clamp-2 leading-snug">{item.discussion}</p>
+            )}
+            <div className="flex items-center gap-2 mt-1">
+              {item.subreddit && <span className="text-[10px] text-gray-400">{item.subreddit}</span>}
+              {item.sentiment && (
+                <span className={`text-[10px] font-bold ${item.sentiment === "positive" ? "text-green-600" : "text-red-500"}`}>
+                  {item.sentiment}
+                </span>
+              )}
+              {item.upvotes !== undefined && <span className="text-[10px] text-gray-400">▲ {item.upvotes}</span>}
             </div>
           </li>
         ))}
@@ -63,11 +70,25 @@ function renderToolData(toolName: string, data: any) {
 
   if (toolName === "calendarific" && data.events) {
     return (
-      <ul className="space-y-1.5">
+      <ul className="space-y-2.5 pt-0.5">
         {data.events.map((item: any, i: number) => (
-          <li key={i} className="text-[11px] sm:text-xs text-gray-700 flex justify-between items-center">
-            <span className="font-bold text-gray-900">{item.name}</span>
-            <span className="text-[10px] text-gray-400 font-mono">{item.date}</span>
+          <li key={i} className="text-[11px] sm:text-xs text-gray-700 bg-white/60 hover:bg-white rounded-lg p-2.5 border border-gray-100/80 shadow-sm transition-colors">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex flex-col gap-1">
+                <span className="font-bold text-gray-900 leading-tight">{item.name}</span>
+                {item.type && (
+                  <span className="inline-block self-start text-[9px] font-bold text-sky-600 bg-sky-50 px-1.5 py-0.5 rounded uppercase tracking-wider">
+                    {item.type}
+                  </span>
+                )}
+              </div>
+              <span className="text-[10px] text-gray-500 font-mono whitespace-nowrap bg-white border border-gray-200 shadow-sm px-1.5 py-0.5 rounded flex-shrink-0 mt-0.5">
+                {item.date}
+              </span>
+            </div>
+            {item.description && (
+              <p className="text-gray-500 mt-2 text-[10px] leading-snug">{item.description}</p>
+            )}
           </li>
         ))}
       </ul>
@@ -75,20 +96,26 @@ function renderToolData(toolName: string, data: any) {
   }
 
   if (toolName === "gemini_synthesis") {
+    const opps = data.strategic_opportunities || data.global_intelligence?.strategic_opportunities;
     return (
       <div className="space-y-1.5">
-        {data.strategic_opportunities && (
+        {opps && (
           <ul className="space-y-1">
-            {data.strategic_opportunities.map((opp: string, i: number) => (
-              <li key={i} className="text-[11px] sm:text-xs text-gray-700 flex gap-1.5">
-                <span className="text-emerald-500 font-bold">→</span>
-                {opp}
+            {opps.slice(0, 3).map((opp: string, i: number) => (
+              <li key={i} className="text-[11px] sm:text-xs text-gray-700 flex gap-1.5 items-start">
+                <span className="text-emerald-500 font-bold mt-0.5">→</span>
+                <span className="leading-snug">{opp}</span>
               </li>
             ))}
+            {opps.length > 3 && (
+              <li className="text-[10px] text-gray-400 pt-1 italic">...and {opps.length - 3} more strategies.</li>
+            )}
           </ul>
         )}
         {data.day_capsules && (
-          <p className="text-[10px] text-gray-400">{data.day_capsules} day capsules synthesized</p>
+          <p className="text-[10px] text-gray-400 font-medium">
+            {Array.isArray(data.day_capsules) ? data.day_capsules.length : data.day_capsules} day capsules synthesized
+          </p>
         )}
       </div>
     );
@@ -229,61 +256,33 @@ export function MeetingTheater({ logs, currentPhase, isDone, calendar = {}, onSk
             </div>
           ) : (
             activeLogs.map((l, idx) => {
-              const isTool = isToolSpeaker(l.speaker);
-              const shouldAnimate = idx === lastLogIndex && !reduceMotion && activeTab === currentPhase && !isTool;
+              const shouldAnimate = idx === lastLogIndex && !reduceMotion && activeTab === currentPhase;
 
               return (
                 <div
                   key={idx}
-                  className={`text-sm animate-in fade-in slide-in-from-bottom-1 duration-300 ${isTool
-                    ? "rounded-2xl border border-sky-100 bg-sky-50/70 p-3 sm:p-4"
-                    : "flex items-start gap-2 sm:gap-3 group"
-                    }`}
+                  className="text-sm animate-in fade-in slide-in-from-bottom-1 duration-300 flex items-start gap-2 sm:gap-3 group"
                 >
-                  {isTool ? (
-                    <div className="flex items-start gap-3">
-                      <span className="inline-flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 min-w-[2rem] sm:min-w-[2.25rem] rounded-xl bg-sky-600 text-white text-xs font-bold flex-shrink-0 shadow-sm">
-                        {avatar(l.speaker)}
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1 flex-wrap">
-                          <div className="font-bold text-sky-950 text-xs uppercase tracking-wide">{l.speaker}</div>
-                          <span className="px-2 py-0.5 rounded-full bg-white text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.1em] sm:tracking-[0.18em] text-sky-700 border border-sky-200">
-                            Tool Status
-                          </span>
-                          <span className="text-[9px] sm:text-[10px] text-sky-700/70 font-normal">
-                            {l.ts ? new Date(l.ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""}
-                          </span>
-                        </div>
-                        <div className="text-sky-950 leading-relaxed prose prose-sm max-w-none prose-p:my-0 text-xs sm:text-sm">
-                          <ReactMarkdown>{l.text}</ReactMarkdown>
-                        </div>
+                  <span className="inline-flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 min-w-[1.75rem] sm:min-w-[2rem] rounded-full bg-black text-white text-[10px] sm:text-xs font-bold flex-shrink-0 shadow-sm ring-2 ring-gray-50 group-hover:ring-gray-200 transition-all">
+                    {avatar(l.speaker)}
+                  </span>
+                  <div className="flex-1 min-w-0 pt-0.5">
+                    <div className="flex items-baseline gap-2 mb-1 flex-wrap">
+                      <div className="font-bold text-gray-900 text-[11px] sm:text-xs uppercase tracking-wide">
+                        {l.speaker}
                       </div>
+                      <span className="text-[9px] sm:text-[10px] text-gray-400 font-normal">
+                        {l.ts ? new Date(l.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""}
+                      </span>
                     </div>
-                  ) : (
-                    <>
-                      <span className="inline-flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 min-w-[1.75rem] sm:min-w-[2rem] rounded-full bg-black text-white text-[10px] sm:text-xs font-bold flex-shrink-0 shadow-sm ring-2 ring-gray-50 group-hover:ring-gray-200 transition-all">
-                        {avatar(l.speaker)}
-                      </span>
-                      <div className="flex-1 min-w-0 pt-0.5">
-                        <div className="flex items-baseline gap-2 mb-1 flex-wrap">
-                          <div className="font-bold text-gray-900 text-[11px] sm:text-xs uppercase tracking-wide">
-                            {l.speaker}
-                          </div>
-                          <span className="text-[9px] sm:text-[10px] text-gray-400 font-normal">
-                            {l.ts ? new Date(l.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""}
-                          </span>
-                        </div>
-                        <div className="text-gray-800 leading-relaxed prose prose-sm max-w-none prose-p:my-0 prose-ul:my-1 prose-li:my-0 prose-strong:font-bold prose-headings:font-bold prose-headings:text-xs prose-headings:uppercase prose-a:text-blue-600 text-xs sm:text-sm">
-                          {shouldAnimate ? (
-                            <Typewriter text={l.text} />
-                          ) : (
-                            <ReactMarkdown>{l.text}</ReactMarkdown>
-                          )}
-                        </div>
-                      </div>
-                    </>
-                  )}
+                    <div className="text-gray-800 leading-relaxed prose prose-sm max-w-none prose-p:my-0 prose-ul:my-1 prose-li:my-0 prose-strong:font-bold prose-headings:font-bold prose-headings:text-xs prose-headings:uppercase prose-a:text-blue-600 text-xs sm:text-sm">
+                      {shouldAnimate ? (
+                        <Typewriter text={l.text} />
+                      ) : (
+                        <ReactMarkdown>{l.text}</ReactMarkdown>
+                      )}
+                    </div>
+                  </div>
                 </div>
               );
             })
