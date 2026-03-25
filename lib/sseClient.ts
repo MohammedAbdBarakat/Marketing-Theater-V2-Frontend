@@ -19,6 +19,7 @@ export type StreamEvent =
   | { type: "campaign_events"; days: any[] }
   | { type: "status_update"; status: string }
   | { type: "phase_3_creative_ready"; calendar: any }
+  | { type: "tool_result_ready"; tool_name: string; tool_result_id: string; status: string; data?: any }
   | { type: "error"; message: string }
   | { type: "done" };
 
@@ -126,19 +127,78 @@ export function simulateRunStream(
 
   async function runPhase1Mock() {
     emit({ type: "phase_start", phase: 1, title: "Market Intelligence Gathering", participants: ["Perplexity API", "Reddit Scraper", "Calendarific"] });
-    const toolLogs = [
-      { speaker: "Perplexity Research", text: "Searching recent trends, competitors, and market news." },
-      { speaker: "Reddit Scraper", text: "Scanning Reddit conversations for audience sentiment." },
-      { speaker: "Calendarific", text: "Collecting relevant calendar moments and holidays." },
-      { speaker: "Gemini Synthesizer", text: "Synthesizing the raw findings into a reviewable intelligence report." },
+
+    const toolSequence = [
+      {
+        speaker: "Perplexity Research",
+        text: "Searching recent trends, competitors, and market news.",
+        tool_name: "perplexity",
+        resultData: {
+          insights: [
+            { title: "UGC-style proof outperforms polished studio content", description: "Current trend coverage points to stronger engagement on relatable demos.", source: "perplexity" },
+            { title: "Competitors invest in feature storytelling", description: "Recent launches are framed around one concrete use case at a time.", source: "perplexity" },
+            { title: "Short-form video dominates discovery", description: "Platforms are prioritizing sub-60s content for explore feeds.", source: "perplexity" },
+          ],
+        },
+      },
+      {
+        speaker: "Reddit Scraper",
+        text: "Scanning Reddit conversations for audience sentiment.",
+        tool_name: "apify_reddit",
+        resultData: {
+          audience_discussions: [
+            { title: "Users trust practical walkthroughs over hype", subreddit: "r/marketing", sentiment: "positive", upvotes: 342 },
+            { title: "Honest before/after examples drive conversions", subreddit: "r/entrepreneur", sentiment: "positive", upvotes: 189 },
+            { title: "Community is skeptical of influencer partnerships", subreddit: "r/smallbusiness", sentiment: "negative", upvotes: 127 },
+          ],
+        },
+      },
+      {
+        speaker: "Calendarific",
+        text: "Collecting relevant calendar moments and holidays.",
+        tool_name: "calendarific",
+        resultData: {
+          events: [
+            { name: "World Social Media Day", date: "2025-06-30", type: "observance" },
+            { name: "International Startup Day", date: "2025-08-20", type: "observance" },
+          ],
+        },
+      },
+      {
+        speaker: "Gemini Synthesizer",
+        text: "Synthesizing the raw findings into a reviewable intelligence report.",
+        tool_name: "gemini_synthesis",
+        resultData: {
+          day_capsules: 7,
+          strategic_opportunities: [
+            "Lead with proof-driven hooks instead of abstract positioning.",
+            "Build a repeatable creator brief around fast setup demos.",
+          ],
+        },
+      },
     ];
 
-    for (const item of toolLogs) {
+    for (let i = 0; i < toolSequence.length; i++) {
+      const item = toolSequence[i];
+      // Emit the log line first
       await new Promise<void>((res) =>
         schedule(() => {
           emit({ type: "log", phase: 1, speaker: item.speaker, text: item.text, ts: Date.now() });
           res();
         }, 350)
+      );
+      // Then emit the tool result after a short delay
+      await new Promise<void>((res) =>
+        schedule(() => {
+          emit({
+            type: "tool_result_ready",
+            tool_name: item.tool_name,
+            tool_result_id: `mock-tr-${item.tool_name}`,
+            status: "success",
+            data: item.resultData,
+          });
+          res();
+        }, 600)
       );
     }
 

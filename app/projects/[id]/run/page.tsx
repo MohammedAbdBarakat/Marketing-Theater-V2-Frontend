@@ -212,6 +212,16 @@ export default function RunPage() {
                 return;
               }
 
+              if (ev.type === "tool_result_ready") {
+                run.addToolResult({
+                  id: ev.tool_result_id,
+                  tool_name: ev.tool_name,
+                  status: ev.status as any,
+                  data: ev.data,
+                });
+                return;
+              }
+
               switch (ev.type) {
                 case "phase_start":
                   if (ev.phase === 1) {
@@ -357,6 +367,7 @@ export default function RunPage() {
         isDone={isRunComplete}
         calendar={run.calendar}
         onSkeletonClick={setSelectedSkeletonDay}
+        toolResults={run.toolResults}
       />
 
       <div className="grid gap-4 md:grid-cols-4">
