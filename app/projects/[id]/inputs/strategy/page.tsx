@@ -1,10 +1,10 @@
 "use client";
 import { useParams, useRouter } from "next/navigation";
-// --- !!! تم إصلاح مسارات الاستيراد هنا !!! ---
 import { useProjectStore } from "../../../../../store/useProjectStore";
 import { useState } from "react";
-// --- !!! الخطوة 1: استيراد وظيفة الـ API والأنواع ---
-import { updateProject } from "../../../../../lib/api";
+
+// 🔥 Added generateStrategyTags to your imports
+import { updateProject, generateStrategyTags } from "../../../../../lib/api";
 import type { StrategyInputs } from "../../../../../lib/api";
 
 export default function StrategyInputsPage() {
@@ -12,7 +12,6 @@ export default function StrategyInputsPage() {
   const router = useRouter();
   const store = useProjectStore();
 
-  // (الحالة المحلية للنموذج الأساسي - تبقى كما هي)
   const [goal, setGoal] = useState(store.strategy.goal);
   const [audience, setAudience] = useState(store.strategy.audience);
   const [styles, setStyles] = useState<string[]>(store.strategy.campaignStyles);
@@ -20,17 +19,16 @@ export default function StrategyInputsPage() {
   const [region, setRegion] = useState(store.strategy.region || "US");
   const [showAdvanced, setShowAdvanced] = useState(false);
 
-  // --- !!! (الإضافة 1): إضافة حالات للحقول المتقدمة !!! ---
   const [preferencesTags, setPreferencesTags] = useState(
     store.strategy.preferences?.tags?.join(", ") || ""
   );
-  // UGC removed
   const [constraints, setConstraints] = useState(
     store.strategy.preferences?.constraints || ""
   );
 
-  // --- !!! الخطوة 2: إضافة حالة للتحميل وإدارة الأخطاء ---
   const [isLoading, setIsLoading] = useState(false);
+  // 🔥 NEW: Loading state just for the tag generator button
+  const [isGeneratingTags, setIsGeneratingTags] = useState(false); 
   const [error, setError] = useState<string | null>(null);
 
   function toggleStyle(s: string) {
@@ -39,51 +37,56 @@ export default function StrategyInputsPage() {
     );
   }
 
-  // --- !!! الخطوة 3: إنشاء وظيفة معالجة (Handler) جديدة لحفظ البيانات ---
+  // 🔥 NEW: The function that calls our new AI endpoint
+  async function handleAutoGenerateTags() {
+    setIsGeneratingTags(true);
+    try {
+      const res = await generateStrategyTags(id as string, {
+        goal,
+        audience,
+        campaignStyles: styles
+      });
+      if (res.tags && res.tags.length > 0) {
+        // Formats the returned array into a comma-separated string for the input box
+        setPreferencesTags(res.tags.join(", "));
+      }
+    } catch (err) {
+      console.error("Failed to generate tags", err);
+    } finally {
+      setIsGeneratingTags(false);
+    }
+  }
+
   async function handleReviewClick() {
-    setIsLoading(true); // (إظهار مؤشر التحميل)
+    setIsLoading(true);
     setError(null);
 
-    // --- !!! (التعديل 3): تجميع كائن التفضيلات (Preferences) ---
-    // نبدأ بالبيانات الكاملة من الـ store
     const strategyData: StrategyInputs = {
       ...store.strategy,
-      // ثم نكتب فوقها بالقيم الجديدة من الحالة المحلية
       goal: goal,
       audience: audience,
       campaignStyles: styles,
       alignWithEvents: align,
       region: region,
-      // --- الإضافة الجديدة هنا ---
       preferences: {
-        ...store.strategy.preferences, // (الحفاظ على أي قيم أخرى)
-        // تحويل النص المفصول بفواصل إلى مصفوفة نصوص
+        ...store.strategy.preferences,
         tags: preferencesTags
           .split(",")
           .map((tag) => tag.trim())
           .filter(Boolean),
-        // ugc removed
         constraints: constraints,
       },
-      // --- نهاية الإضافة ---
     };
-    // --- نهاية الإصلاح ---
 
     try {
-      // إرسال البيانات (الكاملة) إلى الـ Backend أولاً
-      // هذا يستدعي (PUT /projects/{id})
       await updateProject(id, { strategy: strategyData });
-
-      // إذا نجح الإرسال، قم بتحديث الـ Store المحلي
       store.updateStrategy(strategyData);
-
-      // الانتقال إلى الصفحة التالية
       router.push(`/projects/${id}/review`);
     } catch (err) {
       console.error(err);
-      setError("Failed to save strategy. Please try again."); // إظهار خطأ للمستخدم
+      setError("Failed to save strategy. Please try again.");
     } finally {
-      setIsLoading(false); // (إخفاء مؤشر التحميل)
+      setIsLoading(false);
     }
   }
 
@@ -96,7 +99,6 @@ export default function StrategyInputsPage() {
         </p>
       </div>
 
-      {/* ... (بقية كود النموذج يبقى كما هو) ... */}
       <div className="border rounded-lg p-4 space-y-4">
         <div>
           <label className="block text-sm mb-1">Primary Goal</label>
@@ -124,8 +126,9 @@ export default function StrategyInputsPage() {
                 key={s}
                 type="button"
                 onClick={() => toggleStyle(s)}
-                className={`text-xs px-3 py-1 rounded-full border ${styles.includes(s) ? "bg-black text-white" : ""
-                  }`}
+                className={`text-xs px-3 py-1 rounded-full border ${
+                  styles.includes(s) ? "bg-black text-white" : ""
+                }`}
               >
                 {s}
               </button>
@@ -171,19 +174,32 @@ export default function StrategyInputsPage() {
           {showAdvanced ? "Hide" : "Show"} details
         </button>
 
-        {/* --- !!! (التعديل 2): ربط الحالة بالمدخلات --- */}
         {showAdvanced && (
-          <div className="grid gap-3 md:grid-cols-3">
+          <div className="grid gap-3 md:grid-cols-2">
+            
+            {/* 🔥 UPDATED: Preferences (tags) section with the magic button */}
             <div>
-              <label className="block text-sm mb-1">Preferences (tags)</label>
+              <div className="flex justify-between items-center mb-1">
+                <label className="block text-sm">Preferences (tags)</label>
+                <button
+                  type="button"
+                  onClick={handleAutoGenerateTags}
+                  // Disable the button if it's already loading, or if the user hasn't typed a goal/audience yet
+                  disabled={isGeneratingTags || (!goal && !audience)}
+                  className="text-xs flex items-center gap-1 text-blue-600 hover:text-blue-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isGeneratingTags ? "✨ Generating..." : " Auto-generate"}
+                </button>
+              </div>
               <input
                 className="w-full border rounded px-2 py-1"
                 placeholder="e.g., UGC, creators"
                 value={preferencesTags}
                 onChange={(e) => setPreferencesTags(e.target.value)}
               />
+              <p className="text-xs text-gray-500 mt-1">Used to find market intel on Reddit.</p>
             </div>
-            {/* UGC option removed */}
+
             <div>
               <label className="block text-sm mb-1">Constraints</label>
               <input
@@ -197,7 +213,6 @@ export default function StrategyInputsPage() {
         )}
       </div>
 
-      {/* --- !!! الخطوة 4: تحديث الأزرار --- */}
       <div className="flex justify-end gap-2">
         <button
           className="px-4 py-2 rounded border"
@@ -215,7 +230,6 @@ export default function StrategyInputsPage() {
         </button>
       </div>
 
-      {/* (اختياري: عرض رسالة الخطأ إذا حدث فشل) */}
       {error && (
         <div className="text-right text-sm text-red-600 mt-2">{error}</div>
       )}

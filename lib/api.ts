@@ -950,3 +950,22 @@ export async function confirmSignals(runId: string, payload: ConfirmSignalsPaylo
   }
   console.log("Mock confirm signals", payload);
 }
+
+export async function generateStrategyTags(
+  projectId: string,
+  context: { goal: string; audience: string; campaignStyles: string[] }
+): Promise<{ tags: string[] }> {
+  if (IS_REMOTE) {
+    return http<{ tags: string[] }>(`/projects/${projectId}/generate-tags`, {
+      method: "POST",
+      body: JSON.stringify(context),
+    });
+  }
+  
+  // Mock Logic for local testing without backend
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve({ tags: ["marketing", "growth", "strategy", "founders", "b2b"] });
+    }, 800);
+  });
+}
