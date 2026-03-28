@@ -19,6 +19,8 @@ import {
   confirmStrategy,
   getLatestRunForProject,
   startRun,
+  getToolResultsList,
+  getToolResultDetail,
 } from "../../../../lib/api";
 import type { IntelligenceReport } from "../../../../types/intelligence";
 
@@ -138,6 +140,29 @@ export default function RunPage() {
     if (latestResults?.creative_calendar) {
       setCreativeReviewData(latestResults.creative_calendar);
     }
+
+    // Refresh tool results on hydrate
+    if (latest.runId) {
+      getToolResultsList(latest.runId).then(async (list) => {
+        for (const item of list) {
+          try {
+            const detail = await getToolResultDetail(latest.runId, item.id);
+            if (detail) {
+              let parsedData = null;
+              try {
+                parsedData = typeof detail.output_data === 'string' ? JSON.parse(detail.output_data) : detail.output_data;
+              } catch(e) {}
+              useRunStore.getState().addToolResult({
+                id: item.id,
+                tool_name: item.tool_name,
+                status: item.status,
+                data: parsedData
+              });
+            }
+          } catch(e) { console.warn("Failed to fetch tool item", e); }
+        }
+      }).catch(e => console.warn("Failed to fetch tool list", e));
+    }
   };
 
   const refreshRunDataFromDB = async (runId: string) => {
@@ -209,6 +234,35 @@ export default function RunPage() {
                 run.setCurrentPhase(3);
                 run.setPhaseStatus(3, "done");
                 setCreativeReviewData(ev.calendar); // This will trigger the UI popup!
+                return;
+              }
+
+              if (ev.type === "tool_result_ready") {
+                if (ev.data) {
+                  // Direct mock inline
+                  run.addToolResult({
+                    id: ev.tool_result_id,
+                    tool_name: ev.tool_name,
+                    status: ev.status as any,
+                    data: ev.data,
+                  });
+                } else {
+                  // Remote mode: fetch from backend
+                  getToolResultDetail(activeRunId, ev.tool_result_id).then((res) => {
+                    let parsedData = null;
+                    if (res && res.output_data) {
+                      try {
+                        parsedData = typeof res.output_data === "string" ? JSON.parse(res.output_data) : res.output_data;
+                      } catch (e) {}
+                    }
+                    run.addToolResult({
+                      id: ev.tool_result_id,
+                      tool_name: ev.tool_name,
+                      status: ev.status as any,
+                      data: parsedData,
+                    });
+                  }).catch(e => console.error("Failed to fetch tool detail", e));
+                }
                 return;
               }
 
@@ -357,6 +411,7 @@ export default function RunPage() {
         isDone={isRunComplete}
         calendar={run.calendar}
         onSkeletonClick={setSelectedSkeletonDay}
+        toolResults={run.toolResults}
       />
 
       <div className="grid gap-4 md:grid-cols-4">

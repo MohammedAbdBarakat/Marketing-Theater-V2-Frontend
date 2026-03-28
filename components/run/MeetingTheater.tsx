@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import type { TheaterLog } from "../../store/useRunStore";
+import type { TheaterLog, ToolResult } from "../../store/useRunStore";
 import ReactMarkdown from "react-markdown";
 
 type ViewMode = "collapsed" | "default" | "expanded";
@@ -11,9 +11,121 @@ interface MeetingTheaterProps {
   isDone?: boolean;
   calendar?: Record<string, any[]>;
   onSkeletonClick?: (entry: any) => void;
+  toolResults?: ToolResult[];
 }
 
-export function MeetingTheater({ logs, currentPhase, isDone, calendar = {}, onSkeletonClick }: MeetingTheaterProps) {
+const TOOL_LABELS: Record<string, string> = {
+  perplexity: "Perplexity Research",
+  apify_reddit: "Reddit Scraper",
+  calendarific: "Calendarific",
+  gemini_synthesis: "Gemini Synthesizer",
+};
+
+const TOOL_COLORS: Record<string, string> = {
+  perplexity: "bg-violet-600",
+  apify_reddit: "bg-orange-600",
+  calendarific: "bg-emerald-600",
+  gemini_synthesis: "bg-blue-600",
+};
+
+function renderToolData(toolName: string, data: any) {
+  if (!data) return <span className="text-xs text-gray-400 italic">No data</span>;
+
+  if (toolName === "perplexity" && data.insights) {
+    return (
+      <ul className="space-y-1.5">
+        {data.insights.map((item: any, i: number) => (
+          <li key={i} className="text-[11px] sm:text-xs text-gray-700">
+            <span className="font-bold text-gray-900">{item.title || item.trend_title}</span>
+            <p className="text-gray-500 mt-0.5 leading-snug">{item.description || item.data_point}</p>
+          </li>
+        ))}
+      </ul>
+    );
+  }
+
+  if (toolName === "apify_reddit" && data.audience_discussions) {
+    return (
+      <ul className="space-y-1.5">
+        {data.audience_discussions.map((item: any, i: number) => (
+          <li key={i} className="text-[11px] sm:text-xs text-gray-700">
+            <span className="font-bold text-gray-900">{item.title}</span>
+            {item.discussion && (
+              <p className="text-gray-500 mt-0.5 text-[10px] line-clamp-2 leading-snug">{item.discussion}</p>
+            )}
+            <div className="flex items-center gap-2 mt-1">
+              {item.subreddit && <span className="text-[10px] text-gray-400">{item.subreddit}</span>}
+              {item.sentiment && (
+                <span className={`text-[10px] font-bold ${item.sentiment === "positive" ? "text-green-600" : "text-red-500"}`}>
+                  {item.sentiment}
+                </span>
+              )}
+              {item.upvotes !== undefined && <span className="text-[10px] text-gray-400">▲ {item.upvotes}</span>}
+            </div>
+          </li>
+        ))}
+      </ul>
+    );
+  }
+
+  if (toolName === "calendarific" && data.events) {
+    return (
+      <ul className="space-y-2.5 pt-0.5">
+        {data.events.map((item: any, i: number) => (
+          <li key={i} className="text-[11px] sm:text-xs text-gray-700 bg-white/60 hover:bg-white rounded-lg p-2.5 border border-gray-100/80 shadow-sm transition-colors">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex flex-col gap-1">
+                <span className="font-bold text-gray-900 leading-tight">{item.name}</span>
+                {item.type && (
+                  <span className="inline-block self-start text-[9px] font-bold text-sky-600 bg-sky-50 px-1.5 py-0.5 rounded uppercase tracking-wider">
+                    {item.type}
+                  </span>
+                )}
+              </div>
+              <span className="text-[10px] text-gray-500 font-mono whitespace-nowrap bg-white border border-gray-200 shadow-sm px-1.5 py-0.5 rounded flex-shrink-0 mt-0.5">
+                {item.date}
+              </span>
+            </div>
+            {item.description && (
+              <p className="text-gray-500 mt-2 text-[10px] leading-snug">{item.description}</p>
+            )}
+          </li>
+        ))}
+      </ul>
+    );
+  }
+
+  if (toolName === "gemini_synthesis") {
+    const opps = data.strategic_opportunities || data.global_intelligence?.strategic_opportunities;
+    return (
+      <div className="space-y-1.5">
+        {opps && (
+          <ul className="space-y-1">
+            {opps.slice(0, 3).map((opp: string, i: number) => (
+              <li key={i} className="text-[11px] sm:text-xs text-gray-700 flex gap-1.5 items-start">
+                <span className="text-emerald-500 font-bold mt-0.5">→</span>
+                <span className="leading-snug">{opp}</span>
+              </li>
+            ))}
+            {opps.length > 3 && (
+              <li className="text-[10px] text-gray-400 pt-1 italic">...and {opps.length - 3} more strategies.</li>
+            )}
+          </ul>
+        )}
+        {data.day_capsules && (
+          <p className="text-[10px] text-gray-400 font-medium">
+            {Array.isArray(data.day_capsules) ? data.day_capsules.length : data.day_capsules} day capsules synthesized
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  // Generic fallback
+  return <pre className="text-[10px] text-gray-500 whitespace-pre-wrap max-h-24 overflow-y-auto">{JSON.stringify(data, null, 2)}</pre>;
+}
+
+export function MeetingTheater({ logs, currentPhase, isDone, calendar = {}, onSkeletonClick, toolResults = [] }: MeetingTheaterProps) {
   const [viewMode, setViewMode] = useState<ViewMode>("default");
   const [selectedTab, setSelectedTab] = useState<number | null>(null);
   const [reduceMotion, setReduce] = useState(false);
@@ -26,8 +138,10 @@ export function MeetingTheater({ logs, currentPhase, isDone, calendar = {}, onSk
   const lastLogIndex = activeLogs.length - 1;
 
   // Check if we have calendar data to trigger the split screen
-  // Only show the calendar if we are actively viewing the Phase 3 tab
-  const hasCalendar = Object.keys(calendar).length > 0 && activeTab === 3;
+  // Only show the calendar if we are actively viewing the Phase 2 tab
+  const hasCalendar = Object.keys(calendar).length > 0 && activeTab === 2;
+  const hasToolResults = toolResults.length > 0 && activeTab === 1;
+  const hasSidePanel = hasCalendar || hasToolResults;
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -121,11 +235,11 @@ export function MeetingTheater({ logs, currentPhase, isDone, calendar = {}, onSk
 
       {/* Body Container: Stacks vertically on mobile (h-[700px]), side-by-side on desktop (h-[550px]) */}
       <div className={`flex flex-col lg:flex-row overflow-hidden ${viewMode === 'expanded' ? 'flex-1' : 'h-[700px] lg:h-[550px]'}`}>
-        
+
         {/* Left: Chat Logs (flex-1 on mobile so it shares space) */}
         <div
           ref={scrollRef}
-          className={`overflow-y-auto p-3 sm:p-5 space-y-4 sm:space-y-6 custom-scrollbar bg-white transition-all duration-500 flex-1 lg:flex-none ${hasCalendar ? 'lg:w-[40%] border-b lg:border-b-0 lg:border-r border-gray-100' : 'w-full'}`}
+          className={`overflow-y-auto p-3 sm:p-5 space-y-4 sm:space-y-6 custom-scrollbar bg-white transition-all duration-500 flex-1 lg:flex-none ${hasSidePanel ? 'lg:w-[40%] border-b lg:border-b-0 lg:border-r border-gray-100' : 'w-full'}`}
         >
           {activeLogs.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-gray-400 opacity-60 min-h-[150px]">
@@ -142,61 +256,33 @@ export function MeetingTheater({ logs, currentPhase, isDone, calendar = {}, onSk
             </div>
           ) : (
             activeLogs.map((l, idx) => {
-              const isTool = isToolSpeaker(l.speaker);
-              const shouldAnimate = idx === lastLogIndex && !reduceMotion && activeTab === currentPhase && !isTool;
+              const shouldAnimate = idx === lastLogIndex && !reduceMotion && activeTab === currentPhase;
 
               return (
                 <div
                   key={idx}
-                  className={`text-sm animate-in fade-in slide-in-from-bottom-1 duration-300 ${isTool
-                      ? "rounded-2xl border border-sky-100 bg-sky-50/70 p-3 sm:p-4"
-                      : "flex items-start gap-2 sm:gap-3 group"
-                    }`}
+                  className="text-sm animate-in fade-in slide-in-from-bottom-1 duration-300 flex items-start gap-2 sm:gap-3 group"
                 >
-                  {isTool ? (
-                    <div className="flex items-start gap-3">
-                      <span className="inline-flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 min-w-[2rem] sm:min-w-[2.25rem] rounded-xl bg-sky-600 text-white text-xs font-bold flex-shrink-0 shadow-sm">
-                        {avatar(l.speaker)}
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1 flex-wrap">
-                          <div className="font-bold text-sky-950 text-xs uppercase tracking-wide">{l.speaker}</div>
-                          <span className="px-2 py-0.5 rounded-full bg-white text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.1em] sm:tracking-[0.18em] text-sky-700 border border-sky-200">
-                            Tool Status
-                          </span>
-                          <span className="text-[9px] sm:text-[10px] text-sky-700/70 font-normal">
-                            {l.ts ? new Date(l.ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""}
-                          </span>
-                        </div>
-                        <div className="text-sky-950 leading-relaxed prose prose-sm max-w-none prose-p:my-0 text-xs sm:text-sm">
-                          <ReactMarkdown>{l.text}</ReactMarkdown>
-                        </div>
+                  <span className="inline-flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 min-w-[1.75rem] sm:min-w-[2rem] rounded-full bg-black text-white text-[10px] sm:text-xs font-bold flex-shrink-0 shadow-sm ring-2 ring-gray-50 group-hover:ring-gray-200 transition-all">
+                    {avatar(l.speaker)}
+                  </span>
+                  <div className="flex-1 min-w-0 pt-0.5">
+                    <div className="flex items-baseline gap-2 mb-1 flex-wrap">
+                      <div className="font-bold text-gray-900 text-[11px] sm:text-xs uppercase tracking-wide">
+                        {l.speaker}
                       </div>
+                      <span className="text-[9px] sm:text-[10px] text-gray-400 font-normal">
+                        {l.ts ? new Date(l.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""}
+                      </span>
                     </div>
-                  ) : (
-                    <>
-                      <span className="inline-flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 min-w-[1.75rem] sm:min-w-[2rem] rounded-full bg-black text-white text-[10px] sm:text-xs font-bold flex-shrink-0 shadow-sm ring-2 ring-gray-50 group-hover:ring-gray-200 transition-all">
-                        {avatar(l.speaker)}
-                      </span>
-                      <div className="flex-1 min-w-0 pt-0.5">
-                        <div className="flex items-baseline gap-2 mb-1 flex-wrap">
-                          <div className="font-bold text-gray-900 text-[11px] sm:text-xs uppercase tracking-wide">
-                            {l.speaker}
-                          </div>
-                          <span className="text-[9px] sm:text-[10px] text-gray-400 font-normal">
-                            {l.ts ? new Date(l.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""}
-                          </span>
-                        </div>
-                        <div className="text-gray-800 leading-relaxed prose prose-sm max-w-none prose-p:my-0 prose-ul:my-1 prose-li:my-0 prose-strong:font-bold prose-headings:font-bold prose-headings:text-xs prose-headings:uppercase prose-a:text-blue-600 text-xs sm:text-sm">
-                          {shouldAnimate ? (
-                            <Typewriter text={l.text} />
-                          ) : (
-                            <ReactMarkdown>{l.text}</ReactMarkdown>
-                          )}
-                        </div>
-                      </div>
-                    </>
-                  )}
+                    <div className="text-gray-800 leading-relaxed prose prose-sm max-w-none prose-p:my-0 prose-ul:my-1 prose-li:my-0 prose-strong:font-bold prose-headings:font-bold prose-headings:text-xs prose-headings:uppercase prose-a:text-blue-600 text-xs sm:text-sm">
+                      {shouldAnimate ? (
+                        <Typewriter text={l.text} />
+                      ) : (
+                        <ReactMarkdown>{l.text}</ReactMarkdown>
+                      )}
+                    </div>
+                  </div>
                 </div>
               );
             })
@@ -225,7 +311,7 @@ export function MeetingTheater({ logs, currentPhase, isDone, calendar = {}, onSk
                 {Object.keys(calendar).length} Days Planned
               </span>
             </div>
-            
+
             <div className="overflow-y-auto p-3 sm:p-5 custom-scrollbar flex-1">
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                 {Object.entries(calendar)
@@ -266,6 +352,45 @@ export function MeetingTheater({ logs, currentPhase, isDone, calendar = {}, onSk
                       </div>
                     );
                   })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Right: Phase 1 Tool Results Live View */}
+        {hasToolResults && (
+          <div className="flex-1 lg:flex-none lg:w-[60%] bg-gray-50 flex flex-col overflow-hidden animate-in slide-in-from-right-4 duration-500">
+            <div className="flex justify-between items-center px-4 sm:px-5 py-2 sm:py-3 border-b border-gray-200 bg-gray-100 flex-shrink-0">
+              <h3 className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-gray-500">Phase 1: Tool Results</h3>
+              <span className="text-[9px] sm:text-[10px] font-bold px-2 py-0.5 bg-black text-white rounded whitespace-nowrap">
+                {toolResults.length} Tools Completed
+              </span>
+            </div>
+
+            <div className="overflow-y-auto p-3 sm:p-5 custom-scrollbar flex-1">
+              <div className="space-y-3">
+                {toolResults.map((tr) => (
+                  <div key={tr.id} className="border border-gray-200 rounded-xl bg-white shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-300">
+                    <div className="flex items-center gap-2.5 px-3 py-2.5 border-b border-gray-100 bg-gray-50">
+                      <span className={`inline-flex items-center justify-center w-7 h-7 rounded-lg text-white text-[10px] font-bold flex-shrink-0 ${TOOL_COLORS[tr.tool_name] || "bg-gray-600"}`}>
+                        {(TOOL_LABELS[tr.tool_name] || tr.tool_name)[0]}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs font-bold text-gray-900 truncate">{TOOL_LABELS[tr.tool_name] || tr.tool_name}</div>
+                      </div>
+                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                        tr.status === "success" ? "bg-emerald-100 text-emerald-700" :
+                        tr.status === "failed" ? "bg-red-100 text-red-700" :
+                        "bg-gray-100 text-gray-500"
+                      }`}>
+                        {tr.status}
+                      </span>
+                    </div>
+                    <div className="px-3 py-3">
+                      {renderToolData(tr.tool_name, tr.data)}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>

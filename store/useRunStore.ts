@@ -57,6 +57,13 @@ export type CalendarEntry = {
   };
 };
 
+export type ToolResult = {
+  id: string;
+  tool_name: string;
+  status: "success" | "failed" | "skipped";
+  data?: any;
+};
+
 export type RunState = {
   runId?: string;
   status: PhaseStatus;
@@ -66,6 +73,7 @@ export type RunState = {
   results: Partial<Record<1 | 2 | 3 | 4, PhaseResult>>;
   selectedStrategyId?: string;
   calendar: Record<string, CalendarEntry[]>; // ISO date -> entries
+  toolResults: ToolResult[];
   isSignalsModalOpen: boolean;
   signalsData: IntelligenceReport | null;
   strategyToReview: any | null;
@@ -80,6 +88,7 @@ export type RunState = {
   addCalendarEntries: (date: string, entries: CalendarEntry[]) => void;
   setCalendar: (calendar: Record<string, CalendarEntry[]>) => void;
   setTheater: (theater: Record<number, TheaterLog[]>) => void;
+  addToolResult: (result: ToolResult) => void;
   reset: () => void;
   setSignalsModalOpen: (isOpen: boolean) => void;
   setSignalsData: (data: IntelligenceReport | null) => void;
@@ -95,6 +104,7 @@ export const useRunStore = create<RunState>()((set, get) => ({
   results: {},
   selectedStrategyId: undefined,
   calendar: {},
+  toolResults: [],
   isSignalsModalOpen: false,
   signalsData: null,
   strategyToReview: null,
@@ -144,6 +154,12 @@ export const useRunStore = create<RunState>()((set, get) => ({
       return { calendar: { ...st.calendar, [date]: merged } };
     }),
   setCalendar: (calendar) => set({ calendar }),
+  addToolResult: (result) =>
+    set((st) => {
+      const exists = st.toolResults.some((r) => r.id === result.id);
+      if (exists) return st;
+      return { toolResults: [...st.toolResults, result] };
+    }),
   setSignalsModalOpen: (isOpen) => set({ isSignalsModalOpen: isOpen }),
   setSignalsData: (data) => set({ signalsData: data }),
   setStrategyToReview: (data) => set({ strategyToReview: data }),
@@ -157,6 +173,7 @@ export const useRunStore = create<RunState>()((set, get) => ({
       results: {},
       selectedStrategyId: undefined,
       calendar: {},
+      toolResults: [],
       isSignalsModalOpen: false,
       signalsData: null,
       strategyToReview: null,
