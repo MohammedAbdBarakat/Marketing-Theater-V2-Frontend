@@ -345,12 +345,31 @@ function SelectableCard({
 
 function IntelligenceItemView({ item }: { item: IntelligenceItem }) {
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       <div className="flex items-start justify-between gap-3">
         <div className="font-semibold text-sm text-gray-900">{item.title}</div>
         <SourceBadge source={item.source} />
       </div>
       <p className="text-sm text-gray-600 leading-relaxed">{item.description}</p>
+      
+      {item.url && (
+        <div className="pt-2 mt-2 border-t border-gray-100">
+          <a
+            href={item.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()} // Prevents checking/unchecking the card when clicking the link
+            className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 hover:text-blue-800 transition-colors uppercase tracking-wider"
+          >
+            Read Source Article
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+              <polyline points="15 3 21 3 21 9"></polyline>
+              <line x1="10" y1="14" x2="21" y2="3"></line>
+            </svg>
+          </a>
+        </div>
+      )}
     </div>
   );
 }

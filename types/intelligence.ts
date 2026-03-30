@@ -2,6 +2,7 @@ export type IntelligenceItem = {
   title: string;
   description: string;
   source: string;
+  url?: string;
 };
 
 export type IntelligenceSignal = {
