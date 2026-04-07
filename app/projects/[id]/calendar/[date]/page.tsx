@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRunStore, type CalendarEntry } from "../../../../../store/useRunStore";
 import { getLatestRunForProject } from "../../../../../lib/api";
 import { StudioModal } from "../../../../../components/studio/StudioModal";
+import { VideoStudioModal } from "../../../../../components/video-studio/VideoStudioModal";
 
 // ✨ NEW: Mega-Prompt Builder combining Phase 1, Phase 2, and Phase 3!
 function defaultBaseText(entry: CalendarEntry, signalsData: any) {
@@ -193,19 +194,33 @@ export default function CalendarDayPage() {
       )}
 
       {studioOpen && selectedForStudio && (
-        <StudioModal
-          assetId={selectedForStudio.id}
-          runId={run.runId || "mock-run-id"}
-          initialContext={{
-            title: selectedForStudio.title,
-            channel: selectedForStudio.channel,
-            type: selectedForStudio.type,
-            date: selectedForStudio.date,
-            // ✨ PASSING IN ALL THE INTELLIGENCE HERE ✨
-            baseText: defaultBaseText(selectedForStudio, run.signalsData) 
-          }}
-          onClose={() => setStudioOpen(false)}
-        />
+        selectedForStudio.type === "VIDEO" ? (
+          <VideoStudioModal
+            assetId={selectedForStudio.id}
+            runId={run.runId || "mock-run-id"}
+            initialContext={{
+              title: selectedForStudio.title,
+              channel: selectedForStudio.channel,
+              type: selectedForStudio.type,
+              date: selectedForStudio.date,
+            }}
+            onClose={() => setStudioOpen(false)}
+          />
+        ) : (
+          <StudioModal
+            assetId={selectedForStudio.id}
+            runId={run.runId || "mock-run-id"}
+            initialContext={{
+              title: selectedForStudio.title,
+              channel: selectedForStudio.channel,
+              type: selectedForStudio.type,
+              date: selectedForStudio.date,
+              // ✨ PASSING IN ALL THE INTELLIGENCE HERE ✨
+              baseText: defaultBaseText(selectedForStudio, run.signalsData) 
+            }}
+            onClose={() => setStudioOpen(false)}
+          />
+        )
       )}
     </div>
   );
