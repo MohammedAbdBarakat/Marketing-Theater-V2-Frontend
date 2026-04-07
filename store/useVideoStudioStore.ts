@@ -21,6 +21,7 @@ interface VideoStudioState {
         voice_model: string;
         protagonist_id: string | null;
         custom_protagonist_desc: string;
+        ref_images: Record<string, string>;
     };
 
     // Options loaded from API
@@ -51,7 +52,8 @@ export const useVideoStudioStore = create<VideoStudioState>((set) => ({
         voiceover_enabled: false,
         voice_model: "",
         protagonist_id: null,
-        custom_protagonist_desc: ""
+        custom_protagonist_desc: "",
+        ref_images: {}
     },
 
     options: {
@@ -76,7 +78,8 @@ export const useVideoStudioStore = create<VideoStudioState>((set) => ({
             voiceover_enabled: false,
             voice_model: "",
             protagonist_id: null,
-            custom_protagonist_desc: ""
+            custom_protagonist_desc: "",
+            ref_images: {}
         }
     })
 }));

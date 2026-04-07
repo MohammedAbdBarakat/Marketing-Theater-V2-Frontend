@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useVideoStudioStore } from "../../store/useVideoStudioStore";
 import { fetchArchetypes, fetchProtagonists, fetchVoiceovers } from "../../lib/videoStudioApi";
+import ImagePicker from "./ImagePicker";
 
 export function SetupPhase() {
     const { config, updateConfig, options, setOptions } = useVideoStudioStore();
@@ -69,31 +70,22 @@ export function SetupPhase() {
                             <h2 className="text-xs font-medium uppercase tracking-[0.15em] text-gray-500 mb-6 font-bold">Visual Foundation</h2>
                             <div className="grid grid-cols-3 gap-4">
                                 {/* Product Image */}
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Product</label>
-                                    <div className="aspect-square bg-white border border-gray-200 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors group">
-                                        <span className="material-symbols-outlined text-gray-400 group-hover:text-black transition-colors">inventory_2</span>
-                                        <span className="text-[10px] mt-2 text-gray-400">Upload</span>
-                                    </div>
-                                </div>
+                                <ImagePicker 
+                                    label="Product" 
+                                    onImageComplete={(url) => updateConfig({ ref_images: { ...config.ref_images, product: url } })} 
+                                />
 
                                 {/* Character Reference */}
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Character</label>
-                                    <div className="aspect-square bg-white border border-gray-200 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors group">
-                                        <span className="material-symbols-outlined text-gray-400 group-hover:text-black transition-colors">person</span>
-                                        <span className="text-[10px] mt-2 text-gray-400">Reference</span>
-                                    </div>
-                                </div>
+                                <ImagePicker 
+                                    label="Character" 
+                                    onImageComplete={(url) => updateConfig({ ref_images: { ...config.ref_images, character: url } })} 
+                                />
 
                                 {/* Brand Logo */}
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Brand Logo</label>
-                                    <div className="aspect-square bg-white border border-gray-200 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors group">
-                                        <span className="material-symbols-outlined text-gray-400 group-hover:text-black transition-colors">branding_watermark</span>
-                                        <span className="text-[10px] mt-2 text-gray-400">SVG/PNG</span>
-                                    </div>
-                                </div>
+                                <ImagePicker 
+                                    label="Brand Logo" 
+                                    onImageComplete={(url) => updateConfig({ ref_images: { ...config.ref_images, logo: url } })} 
+                                />
                             </div>
                         </div>
 
