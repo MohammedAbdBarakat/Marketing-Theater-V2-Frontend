@@ -3,7 +3,12 @@ import { useVideoStudioStore } from "../../store/useVideoStudioStore";
 import { fetchArchetypes, fetchProtagonists, fetchVoiceovers } from "../../lib/videoStudioApi";
 import ImagePicker from "./ImagePicker";
 
-export function SetupPhase() {
+interface SetupPhaseProps {
+    projectId: string;
+    runId: string;
+}
+
+export function SetupPhase({ projectId, runId }: SetupPhaseProps) {
     const { config, updateConfig, options, setOptions } = useVideoStudioStore();
     const [activeInfoId, setActiveInfoId] = useState<string | null>(null);
 
@@ -72,18 +77,27 @@ export function SetupPhase() {
                                 {/* Product Image */}
                                 <ImagePicker 
                                     label="Product" 
+                                    projectId={projectId}
+                                    runId={runId}
+                                    imageTag="product"
                                     onImageComplete={(url) => updateConfig({ ref_images: { ...config.ref_images, product: url } })} 
                                 />
 
                                 {/* Character Reference */}
                                 <ImagePicker 
                                     label="Character" 
+                                    projectId={projectId}
+                                    runId={runId}
+                                    imageTag="character"
                                     onImageComplete={(url) => updateConfig({ ref_images: { ...config.ref_images, character: url } })} 
                                 />
 
                                 {/* Brand Logo */}
                                 <ImagePicker 
                                     label="Brand Logo" 
+                                    projectId={projectId}
+                                    runId={runId}
+                                    imageTag="logo"
                                     onImageComplete={(url) => updateConfig({ ref_images: { ...config.ref_images, logo: url } })} 
                                 />
                             </div>

@@ -9,12 +9,13 @@ import { VersionHistoryPhase } from "./VersionHistoryPhase";
 
 interface VideoStudioModalProps {
     assetId: string;
+    projectId: string;
     runId: string;
     initialContext: { title: string; channel: string; type: string; date?: string };
     onClose: () => void;
 }
 
-export function VideoStudioModal({ assetId, runId, initialContext, onClose }: VideoStudioModalProps) {
+export function VideoStudioModal({ assetId, projectId, runId, initialContext, onClose }: VideoStudioModalProps) {
     const { currentPhase, isModalOpen, setModalOpen, reset } = useVideoStudioStore();
 
     useEffect(() => {
@@ -39,7 +40,7 @@ export function VideoStudioModal({ assetId, runId, initialContext, onClose }: Vi
                 <TopBar />
                 
                 {/* Phase Routing */}
-                {currentPhase === "setup" && <SetupPhase />}
+                {currentPhase === "setup" && <SetupPhase projectId={projectId} runId={runId} />}
                 {currentPhase === "plan" && <PlanApprovalPhase />}
                 {currentPhase === "theater" && <TheaterPhase />}
                 {currentPhase === "history" && <VersionHistoryPhase />}

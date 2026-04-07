@@ -197,6 +197,7 @@ export default function CalendarDayPage() {
         selectedForStudio.type === "VIDEO" ? (
           <VideoStudioModal
             assetId={selectedForStudio.id}
+            projectId={id}
             runId={run.runId || "mock-run-id"}
             initialContext={{
               title: selectedForStudio.title,
