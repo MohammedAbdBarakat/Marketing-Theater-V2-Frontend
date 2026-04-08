@@ -16,15 +16,16 @@ interface VideoStudioModalProps {
 }
 
 export function VideoStudioModal({ assetId, projectId, runId, initialContext, onClose }: VideoStudioModalProps) {
-    const { currentPhase, isModalOpen, setModalOpen, reset } = useVideoStudioStore();
+    const { currentPhase, isModalOpen, setModalOpen, setContext, reset } = useVideoStudioStore();
 
     useEffect(() => {
         setModalOpen(true);
+        setContext(assetId, runId);
         return () => {
             setModalOpen(false);
             reset();
         };
-    }, [setModalOpen, reset]);
+    }, [setModalOpen, setContext, reset, assetId, runId]);
 
     const handleClose = () => {
         setModalOpen(false);

@@ -1,10 +1,12 @@
 import { http } from "./http";
 import { IS_REMOTE } from "./config";
-import { 
-    VideoPlanRequest, 
-    ArchetypeOption, 
-    ProtagonistOption, 
-    VoiceoverOption 
+import {
+    ArchetypeOption,
+    ProtagonistOption,
+    VoiceoverOption,
+    PlanVideoResponse,
+    GenerateVideoResponse,
+    VideoBlueprint
 } from "../types/videoStudio";
 
 export async function fetchArchetypes(): Promise<ArchetypeOption[]> {
@@ -16,8 +18,7 @@ export async function fetchArchetypes(): Promise<ArchetypeOption[]> {
             console.warn("Failed to fetch archetypes", e);
         }
     }
-    
-    // Mock Fallback matching the provided JSON
+
     return new Promise(resolve => setTimeout(() => resolve([
         { "id": "human_payoff", "name": "Human Payoff", "description": "Best for physical services, rentals, or emotional storytelling." },
         { "id": "kinetic_hype", "name": "Kinetic Hype", "description": "Best for sports, fast cars, or high-energy tech (Nike style)." },
@@ -68,30 +69,83 @@ export async function fetchVoiceovers(): Promise<VoiceoverOption[]> {
     ]), 500));
 }
 
-export async function generateVideoPlan(assetId: string, payload: VideoPlanRequest): Promise<any> {
+// ─── Plan Video ──────────────────────────────────────────
+export async function planVideo(assetId: string, payload: {
+    scene_count: number;
+    aspect_ratio: string;
+    transition_mode: string;
+    archetype: { name: string };
+    protagonist: { text: string; type: string };
+    voiceover: { voice_name: string; voice_toggle: 'auto' | 'true' | 'false' };
+    ref_images: { tag: string; image: string }[];
+}): Promise<PlanVideoResponse> {
     if (IS_REMOTE) {
-        return http(`/api/assets/${assetId}/video-plan`, {
+        return http<PlanVideoResponse>(`/api/assets/${assetId}/plan-video`, {
             method: "POST",
             body: JSON.stringify(payload)
         });
     }
 
-    // Mock response simulating a generated plan
+    // Mock: generate a realistic blueprint
+    return new Promise(resolve => setTimeout(() => {
+        // Evaluate if voiceover should be active based on the new valid strings
+        const isVoiceoverActive = payload.voiceover.voice_toggle === "true" || payload.voiceover.voice_toggle === "auto";
+        const scenes = Array.from({ length: payload.scene_count }).map((_, i) => ({
+            scene_index: i,
+            role: i === 0 ? "hook" : i === payload.scene_count - 1 ? "cta" : "body",
+            veo_prompt: i === 0
+                ? `Cinematic wide-angle tracking shot. A figure steps into frame against a vast, minimalist backdrop. Dramatic lighting with long shadows. The camera dollies forward slowly. 8K, anamorphic lens.`
+                : i === payload.scene_count - 1
+                    ? `Final scene. The product/logo is revealed in an elegant composition. Camera slowly pulls back. Warm, inviting light. Clean typography overlay space.`
+                    : `Mid-shot, scene ${i + 1}. Dynamic composition showcasing the key value proposition. Subtle camera movement, shallow depth of field. Professional color grading.`,
+            transition_method: payload.transition_mode === "auto" ? (i % 2 === 0 ? "morph" : "extend") : payload.transition_mode,
+            reference_tags_used: i === 0 ? ["product"] : []
+        }));
+
+        const blueprint: VideoBlueprint = {
+            scenes,
+            needs_voiceover: isVoiceoverActive, // Updated check
+            voiceover_script: isVoiceoverActive // Updated check
+                ? "The horizon is no longer a limit. It is an invitation. Within the obsidian lens, we find the clarity of the unseen. Every frame tells a story — yours."
+                : "",
+            aspect_ratio: payload.aspect_ratio,
+            transition_mode: payload.transition_mode,
+            ad_archetype: payload.archetype.name,
+            protagonist_profile: {
+                description: payload.protagonist.text,
+                type: payload.protagonist.type
+            },
+            ref_images: payload.ref_images
+        };
+
+        resolve({
+            message: "Video Plan generated successfully",
+            asset_id: assetId,
+            blueprint,
+            resolved_prompt: "V2 Video Plan Generated"
+        });
+    }, 2000));
+}
+
+// ─── Generate Video ──────────────────────────────────────
+export async function generateVideo(assetId: string, payload: {
+    blueprint: VideoBlueprint;
+    ref_images: { tag: string; image: string }[];
+}): Promise<GenerateVideoResponse> {
+    if (IS_REMOTE) {
+        return http<GenerateVideoResponse>(`/api/assets/${assetId}/generate-video`, {
+            method: "POST",
+            body: JSON.stringify(payload)
+        });
+    }
+
+    // Mock: return task info
     return new Promise(resolve => setTimeout(() => {
         resolve({
-            status: "success",
-            plan: {
-                director_notes: "The vision for this sequence is to capture the intersection of synthetic light and biological movement. We are aiming for a 'Techno-Organic' aesthetic. Keep the shadows deep and the highlights vibrant. This plan serves as the architectural foundation for our neural rendering engine.",
-                scenes: Array.from({ length: payload.scene_count }).map((_, i) => ({
-                    index: i + 1,
-                    prompt: i === 0 
-                        ? `Cinematic tracking shot for scene ${i + 1}. Cyber-lime spores float in the air. 8k resolution, photorealistic, anamorphic lens flare.`
-                        : `Close-up shot for scene ${i + 1}. Reflections visible. Electric highlights, extreme macro photography.`
-                })),
-                voiceover_script: payload.voiceover.enabled 
-                    ? "The horizon is no longer a limit. It is an invitation. Within the obsidian lens, we find the clarity of the unseen."
-                    : ""
-            }
+            message: "Video rendering started",
+            asset_id: assetId,
+            version_id: `ver_mock_${Date.now()}`,
+            task_id: `task_mock_${Date.now()}`
         });
-    }, 1500));
+    }, 1000));
 }

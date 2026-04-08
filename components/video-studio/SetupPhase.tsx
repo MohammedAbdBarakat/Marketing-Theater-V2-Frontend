@@ -75,30 +75,30 @@ export function SetupPhase({ projectId, runId }: SetupPhaseProps) {
                             <h2 className="text-xs font-medium uppercase tracking-[0.15em] text-gray-500 mb-6 font-bold">Visual Foundation</h2>
                             <div className="grid grid-cols-3 gap-4">
                                 {/* Product Image */}
-                                <ImagePicker 
-                                    label="Product" 
+                                <ImagePicker
+                                    label="Product"
                                     projectId={projectId}
                                     runId={runId}
                                     imageTag="product"
-                                    onImageComplete={(url) => updateConfig({ ref_images: { ...config.ref_images, product: url } })} 
+                                    onImageComplete={(url) => updateConfig({ ref_images: { ...config.ref_images, product: url } })}
                                 />
 
                                 {/* Character Reference */}
-                                <ImagePicker 
-                                    label="Character" 
+                                <ImagePicker
+                                    label="Character"
                                     projectId={projectId}
                                     runId={runId}
                                     imageTag="character"
-                                    onImageComplete={(url) => updateConfig({ ref_images: { ...config.ref_images, character: url } })} 
+                                    onImageComplete={(url) => updateConfig({ ref_images: { ...config.ref_images, character: url } })}
                                 />
 
                                 {/* Brand Logo */}
-                                <ImagePicker 
-                                    label="Brand Logo" 
+                                <ImagePicker
+                                    label="Brand Logo"
                                     projectId={projectId}
                                     runId={runId}
                                     imageTag="logo"
-                                    onImageComplete={(url) => updateConfig({ ref_images: { ...config.ref_images, logo: url } })} 
+                                    onImageComplete={(url) => updateConfig({ ref_images: { ...config.ref_images, logo: url } })}
                                 />
                             </div>
                         </div>
@@ -228,38 +228,57 @@ export function SetupPhase({ projectId, runId }: SetupPhaseProps) {
                             </div>
 
                             <div className="space-y-4">
-                                <div className="flex items-center justify-between">
-                                    <label className="text-xs font-bold uppercase tracking-wider text-gray-400">Voiceover</label>
+                                <label className="text-xs font-bold uppercase tracking-wider text-gray-400">Voiceover</label>
+
+                                {/* 3-Way Segmented Control */}
+                                <div className="bg-gray-100 p-1 rounded-lg flex border border-gray-200">
                                     <button
-                                        role="switch"
-                                        aria-checked={config.voiceover_enabled}
-                                        onClick={() => updateConfig({ voiceover_enabled: !config.voiceover_enabled })}
-                                        className={`relative inline-flex h-5 w-10 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${config.voiceover_enabled ? 'bg-black' : 'bg-gray-200'
+                                        onClick={() => updateConfig({ voiceover_toggle: "auto" })}
+                                        className={`flex-1 text-[10px] font-bold py-1 rounded transition-colors ${config.voiceover_toggle === 'auto'
+                                            ? 'bg-white shadow-sm text-black border border-gray-200'
+                                            : 'text-gray-500 hover:text-black'
                                             }`}
                                     >
-                                        <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${config.voiceover_enabled ? 'translate-x-5' : 'translate-x-0'
-                                            }`} />
+                                        Auto
+                                    </button>
+                                    <button
+                                        onClick={() => updateConfig({ voiceover_toggle: "true" })} // MUST BE 'true'
+                                        className={`flex-1 text-[10px] font-bold py-1 rounded transition-colors ${config.voiceover_toggle === 'true'
+                                            ? 'bg-white shadow-sm text-black border border-gray-200'
+                                            : 'text-gray-500 hover:text-black'
+                                            }`}
+                                    >
+                                        On
+                                    </button>
+                                    <button
+                                        onClick={() => updateConfig({ voiceover_toggle: "false" })} // MUST BE 'false'
+                                        className={`flex-1 text-[10px] font-bold py-1 rounded transition-colors ${config.voiceover_toggle === 'false'
+                                            ? 'bg-white shadow-sm text-black border border-gray-200'
+                                            : 'text-gray-500 hover:text-black'
+                                            }`}
+                                    >
+                                        Off
                                     </button>
                                 </div>
 
-                                {config.voiceover_enabled && (
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block">Voice Model</label>
-                                        <div className="relative">
-                                            <select
-                                                value={config.voice_model}
-                                                onChange={(e) => updateConfig({ voice_model: e.target.value })}
-                                                className="w-full bg-white border border-gray-200 rounded-lg py-2 pl-3 pr-8 text-xs font-bold focus:ring-1 focus:ring-black appearance-none text-gray-900"
-                                            >
-                                                {options.voiceovers.map((voice) => (
-                                                    <option key={voice.id} value={voice.id}>
-                                                        {voice.name} ({voice.gender}, {voice.style})
-                                                    </option>
-                                                ))}
-                                            </select>
-                                            <span className="material-symbols-outlined absolute right-2 top-1.5 text-xs text-gray-400 pointer-events-none">expand_more</span>
-                                        </div>
+                                {/* Only show the Voice Model dropdown if voiceover is Yes or Auto */}
+                                {(config.voiceover_toggle === 'auto' || config.voiceover_toggle === 'true') && (<div className="space-y-2 mt-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block">Voice Model</label>
+                                    <div className="relative">
+                                        <select
+                                            value={config.voice_model}
+                                            onChange={(e) => updateConfig({ voice_model: e.target.value })}
+                                            className="w-full bg-white border border-gray-200 rounded-lg py-2 pl-3 pr-8 text-xs font-bold focus:ring-1 focus:ring-black appearance-none text-gray-900"
+                                        >
+                                            {options.voiceovers.map((voice) => (
+                                                <option key={voice.id} value={voice.id}>
+                                                    {voice.name} ({voice.gender}, {voice.style})
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <span className="material-symbols-outlined absolute right-2 top-1.5 text-xs text-gray-400 pointer-events-none">expand_more</span>
                                     </div>
+                                </div>
                                 )}
                             </div>
                         </div>
