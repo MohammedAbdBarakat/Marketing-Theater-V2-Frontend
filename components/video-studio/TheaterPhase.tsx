@@ -3,16 +3,17 @@ import { useVideoStudioStore } from "../../store/useVideoStudioStore";
 import { API_BASE } from "../../lib/config";
 
 export function TheaterPhase() {
-    const { 
-        blueprint, 
-        generationStatus, 
-        videoUrl, 
+    const {
+        blueprint,
+        generationStatus,
+        videoUrl,
         versionId,
-        generationError, 
+        generationError,
         runId,
-        setGenerationStatus, 
-        setVideoUrl, 
-        setGenerationError 
+        setGenerationStatus,
+        setVideoUrl,
+        setGenerationError,
+        setPhase
     } = useVideoStudioStore();
 
     const eventSourceRef = useRef<EventSource | null>(null);
@@ -122,7 +123,10 @@ export function TheaterPhase() {
                     {generationError || "Something went wrong during video rendering."}
                 </p>
                 <button
-                    onClick={() => setGenerationStatus("idle")}
+                    onClick={() => {
+                        setGenerationStatus("idle"); // Clears the error so BottomNav button re-enables
+                        setPhase("plan");            // Routes back to the Approve tab
+                    }}
                     className="mt-2 px-6 py-2 bg-black text-white rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-gray-800 transition-colors"
                 >
                     Try Again
