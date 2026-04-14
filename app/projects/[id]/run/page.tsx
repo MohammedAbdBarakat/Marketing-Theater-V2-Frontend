@@ -31,6 +31,7 @@ function toSkeletonCalendar(skeleton: any[]): Record<string, CalendarEntry[]> {
     const date = String(day?.date || "1970-01-01").split("T")[0].split(" ")[0];
     const entry: CalendarEntry = {
       id: `skeleton-day-${day?.day_index ?? date}`,
+      asset_id: day?.asset_id || "",
       date,
       channel: day?.platform || "",
       type: String(day?.content_type || "image").toUpperCase(),
@@ -314,6 +315,7 @@ export default function RunPage() {
 
                   const mappedDay: CalendarEntry = {
                     id: `day-${dayData?.day_index ?? parsedDate}`,
+                    asset_id: dayData?.asset_id || "",
                     date: parsedDate,
                     channel: dayData?.platform || "",
                     type: String(dayData?.content_type || "image").toUpperCase(),

@@ -194,9 +194,9 @@ export default function CalendarDayPage() {
       )}
 
       {studioOpen && selectedForStudio && (
-        selectedForStudio.type === "VIDEO" ? (
+        selectedForStudio.type?.toUpperCase() === "VIDEO" ? (
           <VideoStudioModal
-            assetId={selectedForStudio.id}
+            assetId={selectedForStudio.asset_id || selectedForStudio.id}
             projectId={id}
             runId={run.runId || "mock-run-id"}
             initialContext={{
@@ -209,7 +209,7 @@ export default function CalendarDayPage() {
           />
         ) : (
           <StudioModal
-            assetId={selectedForStudio.id}
+            assetId={selectedForStudio.asset_id || selectedForStudio.id}
             runId={run.runId || "mock-run-id"}
             initialContext={{
               title: selectedForStudio.title,
@@ -217,7 +217,7 @@ export default function CalendarDayPage() {
               type: selectedForStudio.type,
               date: selectedForStudio.date,
               // ✨ PASSING IN ALL THE INTELLIGENCE HERE ✨
-              baseText: defaultBaseText(selectedForStudio, run.signalsData) 
+              baseText: defaultBaseText(selectedForStudio, run.signalsData)
             }}
             onClose={() => setStudioOpen(false)}
           />

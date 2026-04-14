@@ -12,6 +12,7 @@ export function BottomNav() {
     const [loading, setLoading] = useState(false);
 
     const handlePrimaryClick = async () => {
+        console.log("CURRENT ASSET ID IN STORE:", assetId); // Add this!
         if (loading) return;
 
         if (currentPhase === "setup") {

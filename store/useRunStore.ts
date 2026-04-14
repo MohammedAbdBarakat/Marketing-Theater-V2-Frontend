@@ -25,6 +25,7 @@ export type PhaseResult = {
 };
 
 export type CalendarEntry = {
+  asset_id: string;
   id: string;
   date: string;
   channel: string;
