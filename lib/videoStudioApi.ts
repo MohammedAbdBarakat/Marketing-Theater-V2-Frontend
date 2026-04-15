@@ -6,7 +6,10 @@ import {
     VoiceoverOption,
     PlanVideoResponse,
     GenerateVideoResponse,
-    VideoBlueprint
+    VideoBlueprint,
+    VideoVersionInput,
+    VideoHistorySummary,
+    VideoHistoryDetail
 } from "../types/videoStudio";
 
 export async function fetchArchetypes(): Promise<ArchetypeOption[]> {
@@ -130,7 +133,7 @@ export async function planVideo(assetId: string, payload: {
 // ─── Generate Video ──────────────────────────────────────
 export async function generateVideo(assetId: string, payload: {
     blueprint: VideoBlueprint;
-    ref_images: { tag: string; image: string }[];
+    version_input: VideoVersionInput;
 }): Promise<GenerateVideoResponse> {
     if (IS_REMOTE) {
         return http<GenerateVideoResponse>(`/api/assets/${assetId}/generate-video`, {
@@ -144,8 +147,56 @@ export async function generateVideo(assetId: string, payload: {
         resolve({
             message: "Video rendering started",
             asset_id: assetId,
-            version_id: `ver_mock_${Date.now()}`,
+            video_version_id: `ver_mock_${Date.now()}`,
             task_id: `task_mock_${Date.now()}`
         });
     }, 1000));
+}
+
+export async function getVideoVersionHistory(assetId: string): Promise<VideoHistorySummary[]> {
+    if (IS_REMOTE) {
+        return http<VideoHistorySummary[]>(`/api/assets/${assetId}/video-versions`);
+    }
+
+    return [];
+}
+
+export async function getVideoVersionDetail(assetId: string, videoVersionId: string): Promise<VideoHistoryDetail> {
+    if (IS_REMOTE) {
+        return http<VideoHistoryDetail>(`/api/assets/${assetId}/video-versions/${videoVersionId}`);
+    }
+
+    return {
+        asset_id: assetId,
+        video_version_id: videoVersionId,
+        created_at: new Date().toISOString(),
+        status: "completed",
+        is_active_version: true,
+        scene_count: 4,
+        aspect_ratio: "16:9",
+        archetype: "human_payoff",
+        voiceover_enabled: true,
+        voice_name: "Zephyr",
+        video_url: "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+        render_metadata: {},
+        version_input: {
+            scene_count: 4,
+            aspect_ratio: "16:9",
+            transition_mode: "auto",
+            archetype: { name: "human_payoff" },
+            protagonist: { text: "Tech-savvy millennial", type: "default" },
+            voiceover: { voice_name: "Zephyr", voice_toggle: "true" },
+            ref_images: []
+        },
+        blueprint: {
+            scenes: [],
+            needs_voiceover: true,
+            voiceover_script: "Mock script",
+            aspect_ratio: "16:9",
+            transition_mode: "auto",
+            ad_archetype: "human_payoff",
+            protagonist_profile: { description: "Tech-savvy millennial", type: "default" },
+            ref_images: []
+        }
+    };
 }

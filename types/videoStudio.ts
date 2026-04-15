@@ -6,7 +6,7 @@ export interface ArchetypeConfig {
 
 export interface VoiceoverConfig {
     voice_model: string;
-    voice_toggle: 'auto' | 'yes' | 'no';
+    voice_toggle: 'auto' | 'true' | 'false';
 }
 
 export interface RefImage {
@@ -28,6 +28,16 @@ export interface VideoPlanRequest {
     voiceover: VoiceoverConfig;
     ref_images?: RefImage[];
     protagonist?: ProtagonistConfig;
+}
+
+export interface VideoVersionInput {
+    scene_count: number;
+    aspect_ratio: string;
+    transition_mode: string;
+    archetype: { name: string };
+    protagonist?: { text: string; type: string } | null;
+    voiceover: { voice_name?: string; voice_toggle: 'auto' | 'true' | 'false' };
+    ref_images: { tag: string; image: string }[];
 }
 
 // Option Types from API
@@ -61,9 +71,11 @@ export interface BlueprintScene {
 }
 
 export interface VideoBlueprint {
+    director_note?: string;
     scenes: BlueprintScene[];
     needs_voiceover: boolean;
     voiceover_script: string;
+    alignment_reasoning?: string;
     aspect_ratio: string;
     transition_mode: string;
     ad_archetype: string;
@@ -86,8 +98,30 @@ export interface PlanVideoResponse {
 export interface GenerateVideoResponse {
     message: string;
     asset_id: string;
-    version_id: string;
+    video_version_id: string;
+    version_id?: string;
     task_id: string;
+}
+
+export interface VideoHistorySummary {
+    asset_id: string;
+    video_version_id: string;
+    created_at: string;
+    status: "planned" | "processing" | "completed" | "failed";
+    is_active_version: boolean;
+    scene_count: number;
+    aspect_ratio: string;
+    archetype?: string | null;
+    voiceover_enabled: boolean;
+    voice_name?: string | null;
+    video_url?: string | null;
+    error_message?: string | null;
+}
+
+export interface VideoHistoryDetail extends VideoHistorySummary {
+    render_metadata?: Record<string, any>;
+    version_input: VideoVersionInput;
+    blueprint: VideoBlueprint;
 }
 
 export type GenerationStatus = 'idle' | 'generating_plan' | 'generating_video' | 'completed' | 'failed';

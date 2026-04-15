@@ -1,15 +1,45 @@
 import { useState } from "react";
 import { useVideoStudioStore } from "../../store/useVideoStudioStore";
-import { planVideo, generateVideo } from "../../lib/videoStudioApi";
+import { planVideo, generateVideo, getVideoVersionHistory } from "../../lib/videoStudioApi";
 
 export function BottomNav() {
     const {
         currentPhase, setPhase, setModalOpen,
         config, options, assetId, blueprint,
-        setBlueprint, setGenerationStatus, setVersionId, setTaskId, setGenerationError
+        setBlueprint, setGenerationStatus, setVersionId, setTaskId, setGenerationError,
+        setHistory, setHistoryError, setSelectedHistoryVersionId
     } = useVideoStudioStore();
 
     const [loading, setLoading] = useState(false);
+
+    const buildVersionInput = () => {
+        const protagonistOption = options.protagonists.find(p => p.id === config.protagonist_id);
+        const voiceoverOption = options.voiceovers.find(v => v.id === config.voice_model);
+
+        const protagonistText = config.protagonist_id === "custom"
+            ? config.custom_protagonist_desc
+            : protagonistOption?.description || "";
+        const protagonistType = config.protagonist_id === "custom"
+            ? "custom"
+            : protagonistOption?.id || "default";
+
+        const refImages = Object.entries(config.ref_images)
+            .filter(([, url]) => url)
+            .map(([tag, image]) => ({ tag, image }));
+
+        return {
+            scene_count: config.scene_count,
+            aspect_ratio: config.aspect_ratio,
+            transition_mode: config.transition_mode,
+            archetype: { name: config.archetype_id },
+            protagonist: { text: protagonistText, type: protagonistType },
+            voiceover: {
+                voice_name: voiceoverOption?.id || config.voice_model || "",
+                voice_toggle: config.voiceover_toggle,
+            },
+            ref_images: refImages,
+        };
+    };
 
     const handlePrimaryClick = async () => {
         console.log("CURRENT ASSET ID IN STORE:", assetId); // Add this!
@@ -22,35 +52,7 @@ export function BottomNav() {
             setPhase("plan");
 
             try {
-                // Build the payload from store config
-                const archetypeName = options.archetypes.find(a => a.id === config.archetype_id)?.name || config.archetype_id;
-                const protagonistOption = options.protagonists.find(p => p.id === config.protagonist_id);
-                const voiceoverOption = options.voiceovers.find(v => v.id === config.voice_model);
-
-                const protagonistText = config.protagonist_id === "custom"
-                    ? config.custom_protagonist_desc
-                    : protagonistOption?.description || "";
-                const protagonistType = config.protagonist_id === "custom"
-                    ? "custom"
-                    : protagonistOption?.id || "default";
-
-                const refImages = Object.entries(config.ref_images)
-                    .filter(([, url]) => url)
-                    .map(([tag, image]) => ({ tag, image }));
-
-                const response = await planVideo(assetId, {
-                    scene_count: config.scene_count,
-                    aspect_ratio: config.aspect_ratio,
-                    transition_mode: config.transition_mode,
-                    archetype: { name: archetypeName },
-                    protagonist: { text: protagonistText, type: protagonistType },
-                    voiceover: {
-                        voice_name: voiceoverOption?.name || "",
-                        // FIXED: Directly use the literal string from the updated store
-                        voice_toggle: config.voiceover_toggle
-                    },
-                    ref_images: refImages
-                });
+                const response = await planVideo(assetId, buildVersionInput());
 
                 setBlueprint(response.blueprint, response.resolved_prompt);
                 setGenerationStatus("idle");
@@ -71,15 +73,21 @@ export function BottomNav() {
             setPhase("theater");
 
             try {
-                const refImages = blueprint.ref_images || [];
+                const versionInput = buildVersionInput();
 
                 const response = await generateVideo(assetId, {
                     blueprint,
-                    ref_images: refImages
+                    version_input: versionInput
                 });
 
-                setVersionId(response.version_id);
+                const currentVersionId = response.video_version_id || response.version_id || null;
+                setVersionId(currentVersionId);
                 setTaskId(response.task_id);
+                setSelectedHistoryVersionId(currentVersionId);
+
+                const history = await getVideoVersionHistory(assetId);
+                setHistory(history);
+                setHistoryError(null);
                 // Status tracking continues via SSE in TheaterPhase
             } catch (err) {
                 console.error("Failed to start generation", err);

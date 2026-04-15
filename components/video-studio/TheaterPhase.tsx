@@ -14,6 +14,7 @@ export function TheaterPhase() {
         setGenerationStatus,
         setVideoUrl,
         setGenerationError,
+        updateHistoryEntry,
         setPhase
     } = useVideoStudioStore();
 
@@ -37,10 +38,16 @@ export function TheaterPhase() {
                 if (data.status === "completed" && data.url) {
                     setVideoUrl(data.url);
                     setGenerationStatus("completed");
+                    if (versionId) {
+                        updateHistoryEntry(versionId, { status: "completed", video_url: data.url, error_message: null });
+                    }
                     es.close();
                 } else if (data.status === "failed") {
                     setGenerationError(data.message || data.error || "Video generation failed.");
                     setGenerationStatus("failed");
+                    if (versionId) {
+                        updateHistoryEntry(versionId, { status: "failed", error_message: data.message || data.error || "Video generation failed." });
+                    }
                     es.close();
                 }
             } catch {
@@ -56,7 +63,7 @@ export function TheaterPhase() {
             es.close();
             eventSourceRef.current = null;
         };
-    }, [generationStatus, runId, versionId, taskId, setGenerationStatus, setVideoUrl, setGenerationError]);
+    }, [generationStatus, runId, versionId, taskId, setGenerationStatus, setVideoUrl, setGenerationError, updateHistoryEntry]);
 
     // ─── IDLE: No generation started ─────────────────────
     if (generationStatus === "idle" || generationStatus === "generating_plan") {

@@ -6,6 +6,7 @@ import { SetupPhase } from "./SetupPhase";
 import { PlanApprovalPhase } from "./PlanApprovalPhase";
 import { TheaterPhase } from "./TheaterPhase";
 import { VersionHistoryPhase } from "./VersionHistoryPhase";
+import { getVideoVersionDetail, getVideoVersionHistory } from "../../lib/videoStudioApi";
 
 interface VideoStudioModalProps {
     assetId: string;
@@ -16,16 +17,64 @@ interface VideoStudioModalProps {
 }
 
 export function VideoStudioModal({ assetId, projectId, runId, initialContext, onClose }: VideoStudioModalProps) {
-    const { currentPhase, isModalOpen, setModalOpen, setContext, reset } = useVideoStudioStore();
+    const {
+        currentPhase,
+        isModalOpen,
+        setModalOpen,
+        setContext,
+        reset,
+        setHistory,
+        setHistoryLoading,
+        setHistoryError,
+        hydrateFromHistoryDetail,
+    } = useVideoStudioStore();
 
     useEffect(() => {
+        let active = true;
         setModalOpen(true);
         setContext(assetId, runId);
+
+        async function hydrateHistory() {
+            setHistoryLoading(true);
+            setHistoryError(null);
+            try {
+                const history = await getVideoVersionHistory(assetId);
+                if (!active) return;
+                setHistory(history);
+
+                const initialVersion = history.find((item) => item.is_active_version) || history[0];
+                if (initialVersion) {
+                    const detail = await getVideoVersionDetail(assetId, initialVersion.video_version_id);
+                    if (!active) return;
+                    hydrateFromHistoryDetail(detail);
+                }
+            } catch (error) {
+                if (!active) return;
+                console.error("Failed to hydrate video history", error);
+                setHistoryError("Could not load video history.");
+            } finally {
+                if (active) setHistoryLoading(false);
+            }
+        }
+
+        hydrateHistory();
+
         return () => {
+            active = false;
             setModalOpen(false);
             reset();
         };
-    }, [setModalOpen, setContext, reset, assetId, runId]);
+    }, [
+        setModalOpen,
+        setContext,
+        reset,
+        assetId,
+        runId,
+        setHistory,
+        setHistoryLoading,
+        setHistoryError,
+        hydrateFromHistoryDetail,
+    ]);
 
     const handleClose = () => {
         setModalOpen(false);
