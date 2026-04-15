@@ -1,5 +1,6 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { useVideoStudioStore } from "../../store/useVideoStudioStore";
+import { getVideoVersionHistory } from "../../lib/videoStudioApi";
 import { API_BASE } from "../../lib/config";
 
 export function TheaterPhase() {
@@ -11,6 +12,7 @@ export function TheaterPhase() {
         generationError,
         runId,
         taskId,
+        assetId,
         setGenerationStatus,
         setVideoUrl,
         setGenerationError,
@@ -19,51 +21,149 @@ export function TheaterPhase() {
     } = useVideoStudioStore();
 
     const eventSourceRef = useRef<EventSource | null>(null);
+    const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    // SSE listener for video generation progress
+    // Stable callback to handle a completed/failed event
+    const handleCompletedEvent = useCallback((url: string, currentVersionId: string | null) => {
+        setVideoUrl(url);
+        setGenerationStatus("completed");
+        if (currentVersionId) {
+            updateHistoryEntry(currentVersionId, { status: "completed", video_url: url, error_message: null });
+        }
+    }, [setVideoUrl, setGenerationStatus, updateHistoryEntry]);
+
+    const handleFailedEvent = useCallback((message: string, currentVersionId: string | null) => {
+        setGenerationError(message);
+        setGenerationStatus("failed");
+        if (currentVersionId) {
+            updateHistoryEntry(currentVersionId, { status: "failed", error_message: message });
+        }
+    }, [setGenerationError, setGenerationStatus, updateHistoryEntry]);
+
+    // ─── SSE listener with auto-reconnect ─────────────────
     useEffect(() => {
         if (generationStatus !== "generating_video" || !runId) return;
 
-        const es = new EventSource(`${API_BASE}/runs/${runId}/stream`);
-        eventSourceRef.current = es;
+        let isCancelled = false;
 
-        es.onmessage = (event) => {
-            try {
-                const parsed = JSON.parse(event.data);
-                if (parsed.type !== "asset_update" || !parsed.data) return;
+        const connectSSE = () => {
+            if (isCancelled) return;
 
-                const data = parsed.data;
-                if (versionId && data.version_id !== versionId) return;
-
-                if (data.status === "completed" && data.url) {
-                    setVideoUrl(data.url);
-                    setGenerationStatus("completed");
-                    if (versionId) {
-                        updateHistoryEntry(versionId, { status: "completed", video_url: data.url, error_message: null });
-                    }
-                    es.close();
-                } else if (data.status === "failed") {
-                    setGenerationError(data.message || data.error || "Video generation failed.");
-                    setGenerationStatus("failed");
-                    if (versionId) {
-                        updateHistoryEntry(versionId, { status: "failed", error_message: data.message || data.error || "Video generation failed." });
-                    }
-                    es.close();
-                }
-            } catch {
-                // ignore parse errors
+            // Close existing connection
+            if (eventSourceRef.current) {
+                eventSourceRef.current.close();
+                eventSourceRef.current = null;
             }
+
+            const es = new EventSource(`${API_BASE}/runs/${runId}/stream`);
+            eventSourceRef.current = es;
+
+            es.onmessage = (event) => {
+                try {
+                    const parsed = JSON.parse(event.data);
+                    if (parsed.type !== "asset_update" || !parsed.data) return;
+
+                    const data = parsed.data;
+
+                    // Get current versionId from store (closure might be stale,
+                    // so we also accept if our versionId is null = "accept any")
+                    const currentVersionId = useVideoStudioStore.getState().versionId;
+                    if (currentVersionId && data.version_id !== currentVersionId) return;
+
+                    if (data.status === "completed" && data.url) {
+                        handleCompletedEvent(data.url, currentVersionId);
+                        es.close();
+                        eventSourceRef.current = null;
+                    } else if (data.status === "failed") {
+                        handleFailedEvent(
+                            data.message || data.error || "Video generation failed.",
+                            currentVersionId
+                        );
+                        es.close();
+                        eventSourceRef.current = null;
+                    }
+                } catch {
+                    // ignore parse errors
+                }
+            };
+
+            es.onerror = () => {
+                if (isCancelled) return;
+                console.warn("Video stream connection interrupted, will reconnect...", { runId, versionId, taskId });
+                es.close();
+                eventSourceRef.current = null;
+
+                // Auto-reconnect after 2 seconds
+                reconnectTimeoutRef.current = setTimeout(() => {
+                    const currentStatus = useVideoStudioStore.getState().generationStatus;
+                    if (!isCancelled && currentStatus === "generating_video") {
+                        console.log("Reconnecting SSE...");
+                        connectSSE();
+                    }
+                }, 2000);
+            };
         };
 
-        es.onerror = () => {
-            console.warn("Video stream connection interrupted", { runId, versionId, taskId });
-        };
+        connectSSE();
 
         return () => {
-            es.close();
-            eventSourceRef.current = null;
+            isCancelled = true;
+            if (eventSourceRef.current) {
+                eventSourceRef.current.close();
+                eventSourceRef.current = null;
+            }
+            if (reconnectTimeoutRef.current) {
+                clearTimeout(reconnectTimeoutRef.current);
+                reconnectTimeoutRef.current = null;
+            }
         };
-    }, [generationStatus, runId, versionId, taskId, setGenerationStatus, setVideoUrl, setGenerationError, updateHistoryEntry]);
+    // We intentionally exclude versionId from deps to avoid reconnect cycles.
+    // The handler reads the latest versionId from the store directly.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [generationStatus, runId]);
+
+    // ─── Polling fallback for missed SSE events ──────────
+    useEffect(() => {
+        if (generationStatus !== "generating_video" || !assetId || !versionId) return;
+
+        // Poll every 5 seconds as a safety net
+        pollIntervalRef.current = setInterval(async () => {
+            try {
+                const currentStatus = useVideoStudioStore.getState().generationStatus;
+                if (currentStatus !== "generating_video") {
+                    if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+                    return;
+                }
+
+                const history = await getVideoVersionHistory(assetId);
+                const currentVersionId = useVideoStudioStore.getState().versionId;
+                const match = history.find(v => v.video_version_id === currentVersionId);
+
+                if (match && match.status === "completed" && match.video_url) {
+                    console.log("Polling fallback: detected completed version", match.video_version_id);
+                    handleCompletedEvent(match.video_url, currentVersionId);
+                    if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+                } else if (match && match.status === "failed") {
+                    console.log("Polling fallback: detected failed version", match.video_version_id);
+                    handleFailedEvent(
+                        match.error_message || "Video generation failed.",
+                        currentVersionId
+                    );
+                    if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+                }
+            } catch (err) {
+                console.warn("Polling fallback error:", err);
+            }
+        }, 5000);
+
+        return () => {
+            if (pollIntervalRef.current) {
+                clearInterval(pollIntervalRef.current);
+                pollIntervalRef.current = null;
+            }
+        };
+    }, [generationStatus, assetId, versionId, handleCompletedEvent, handleFailedEvent]);
 
     // ─── IDLE: No generation started ─────────────────────
     if (generationStatus === "idle" || generationStatus === "generating_plan") {
