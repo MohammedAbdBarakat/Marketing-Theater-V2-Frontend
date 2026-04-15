@@ -19,6 +19,7 @@ export function TheaterPhase() {
     const eventSourceRef = useRef<EventSource | null>(null);
 
     // SSE listener for video generation progress
+    // SSE listener for video generation progress
     useEffect(() => {
         if (generationStatus !== "generating_video" || !runId) return;
 
@@ -29,7 +30,15 @@ export function TheaterPhase() {
             try {
                 const parsed = JSON.parse(event.data);
 
-                if (parsed.type === "video_update" || parsed.type === "video_completed") {
+                if (parsed.type === "video_update" || parsed.type === "video_completed" || parsed.type === "asset_update") {
+                    
+                    // 🔧 CRITICAL FIX: Only process events for the CURRENT version!
+                    // This prevents old crashes in the same run from instantly killing the UI.
+                    const currentVersionId = useVideoStudioStore.getState().versionId;
+                    if (parsed.data?.version_id && parsed.data.version_id !== currentVersionId) {
+                        return; // 🛑 Ignore events from older attempts
+                    }
+
                     if (parsed.data?.status === "completed" && parsed.data?.url) {
                         setVideoUrl(parsed.data.url);
                         setGenerationStatus("completed");
