@@ -10,6 +10,7 @@ export function TheaterPhase() {
         versionId,
         generationError,
         runId,
+        taskId,
         setGenerationStatus,
         setVideoUrl,
         setGenerationError,
@@ -28,17 +29,19 @@ export function TheaterPhase() {
         es.onmessage = (event) => {
             try {
                 const parsed = JSON.parse(event.data);
+                if (parsed.type !== "asset_update" || !parsed.data) return;
 
-                if (parsed.type === "video_update" || parsed.type === "video_completed") {
-                    if (parsed.data?.status === "completed" && parsed.data?.url) {
-                        setVideoUrl(parsed.data.url);
-                        setGenerationStatus("completed");
-                        es.close();
-                    } else if (parsed.data?.status === "failed") {
-                        setGenerationError(parsed.data?.message || "Video generation failed.");
-                        setGenerationStatus("failed");
-                        es.close();
-                    }
+                const data = parsed.data;
+                if (versionId && data.version_id !== versionId) return;
+
+                if (data.status === "completed" && data.url) {
+                    setVideoUrl(data.url);
+                    setGenerationStatus("completed");
+                    es.close();
+                } else if (data.status === "failed") {
+                    setGenerationError(data.message || data.error || "Video generation failed.");
+                    setGenerationStatus("failed");
+                    es.close();
                 }
             } catch {
                 // ignore parse errors
@@ -46,22 +49,14 @@ export function TheaterPhase() {
         };
 
         es.onerror = () => {
-            // In mock mode, SSE won't connect — simulate completion after delay
-            es.close();
-            setTimeout(() => {
-                const currentStatus = useVideoStudioStore.getState().generationStatus;
-                if (currentStatus === "generating_video") {
-                    setVideoUrl("https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4");
-                    setGenerationStatus("completed");
-                }
-            }, 4000);
+            console.warn("Video stream connection interrupted", { runId, versionId, taskId });
         };
 
         return () => {
             es.close();
             eventSourceRef.current = null;
         };
-    }, [generationStatus, runId, setGenerationStatus, setVideoUrl, setGenerationError]);
+    }, [generationStatus, runId, versionId, taskId, setGenerationStatus, setVideoUrl, setGenerationError]);
 
     // ─── IDLE: No generation started ─────────────────────
     if (generationStatus === "idle" || generationStatus === "generating_plan") {
