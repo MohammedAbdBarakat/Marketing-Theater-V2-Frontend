@@ -96,10 +96,11 @@ export function TheaterPhase() {
                             <span className="material-symbols-outlined text-[12px]">theaters</span>
                             {blueprint.scenes.length} scenes
                         </span>
-                        <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-gray-100 rounded-full text-[10px] font-bold uppercase tracking-wider text-gray-500">
-                            <span className="material-symbols-outlined text-[12px]">aspect_ratio</span>
-                            {blueprint.aspect_ratio}
-                        </span>
+                        {blueprint.aspect_ratio && (
+                            <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-gray-100 rounded-full text-[10px] font-bold uppercase tracking-wider text-gray-600">
+                                {blueprint.aspect_ratio}
+                            </span>
+                        )}
                     </div>
                 )}
             </div>
