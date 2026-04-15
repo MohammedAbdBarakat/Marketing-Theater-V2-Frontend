@@ -173,11 +173,11 @@ export function TheaterPhase() {
                     </div>
 
                     {/* Scene Timeline Strip */}
-                    {blueprint && blueprint.scenes.length > 0 && (
+                    {false && blueprint && (blueprint?.scenes?.length ?? 0) > 0 && (
                         <div className="space-y-3">
                             <h3 className="text-xs font-bold uppercase tracking-[0.15em] text-gray-500">Scene Timeline</h3>
                             <div className="flex gap-3 overflow-x-auto pb-2 custom-scrollbar">
-                                {blueprint.scenes.map((scene) => (
+                                {blueprint?.scenes.map((scene) => (
                                     <div
                                         key={scene.scene_index}
                                         className="flex-shrink-0 w-40 bg-white border border-gray-200 rounded-lg p-3 hover:shadow-sm transition-shadow"
