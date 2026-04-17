@@ -332,7 +332,15 @@ export default function RunPage() {
                 }
                 case "phase_2_complete":
                   run.setPhaseStatus(2, "done");
-                  run.setCurrentPhase(3);
+                  // Don't immediately switch to Phase 3 tab — the MeetingTheater's
+                  // smart auto-follow will switch once Phase 3 has its first log.
+                  // Instead, add a transition message to Phase 2's feed.
+                  run.pushLog({
+                    phase: 2,
+                    speaker: "System",
+                    text: "✅ Skeleton complete. Starting Creative Production...",
+                    ts: Date.now(),
+                  });
                   break;
                 case "phase_result":
                   if ([1, 2, 3].includes(ev.phase)) {

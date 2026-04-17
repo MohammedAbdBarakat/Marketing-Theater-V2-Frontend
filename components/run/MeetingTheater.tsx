@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import type { TheaterLog, ToolResult } from "../../store/useRunStore";
 import ReactMarkdown from "react-markdown";
 
@@ -130,7 +130,21 @@ export function MeetingTheater({ logs, currentPhase, isDone, calendar = {}, onSk
   const [selectedTab, setSelectedTab] = useState<number | null>(null);
   const [reduceMotion, setReduce] = useState(false);
   const normalizedCurrentPhase = currentPhase > 3 ? 3 : currentPhase || 1;
-  const activeTab = selectedTab ?? normalizedCurrentPhase;
+
+  // Smart auto-follow: don't switch to a phase tab that has no logs yet.
+  // This prevents the jarring "freeze" when Phase 2→3 transition fires but
+  // Phase 3 hasn't received any messages yet (the rich Phase 2 view vanishes).
+  const activeTab = useMemo(() => {
+    if (selectedTab !== null) return selectedTab; // User manually picked a tab
+    const targetLogs = logs[normalizedCurrentPhase as keyof typeof logs] || [];
+    if (targetLogs.length === 0 && normalizedCurrentPhase > 1) {
+      // Stay on the highest phase that has content
+      for (let p = normalizedCurrentPhase - 1; p >= 1; p--) {
+        if ((logs[p as keyof typeof logs] || []).length > 0) return p;
+      }
+    }
+    return normalizedCurrentPhase;
+  }, [selectedTab, normalizedCurrentPhase, logs]);
 
   // Auto-scroll logic (scoped to the active tab's logs)
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -181,18 +195,25 @@ export function MeetingTheater({ logs, currentPhase, isDone, calendar = {}, onSk
 
           {/* Phase Tabs */}
           <div className="flex items-center gap-1 bg-gray-200/50 p-1 rounded-lg">
-            {[1, 2, 3].map((p) => (
-              <button
-                key={p}
-                onClick={() => setSelectedTab(p)}
-                className={`text-xs px-2 sm:px-3 py-1 rounded transition-all duration-200 whitespace-nowrap ${activeTab === p
-                  ? "bg-white text-black font-bold shadow-sm ring-1 ring-black/5"
-                  : "text-gray-500 hover:text-gray-900 hover:bg-gray-200/50"
-                  }`}
-              >
-                Phase {p}
-              </button>
-            ))}
+            {[1, 2, 3].map((p) => {
+              const isActive = activeTab === p;
+              const hasNewContent = !isActive && p === normalizedCurrentPhase && !isDone && (logs[p as keyof typeof logs] || []).length > 0;
+              return (
+                <button
+                  key={p}
+                  onClick={() => setSelectedTab(p)}
+                  className={`text-xs px-2 sm:px-3 py-1 rounded transition-all duration-200 whitespace-nowrap relative ${isActive
+                    ? "bg-white text-black font-bold shadow-sm ring-1 ring-black/5"
+                    : "text-gray-500 hover:text-gray-900 hover:bg-gray-200/50"
+                    }`}
+                >
+                  Phase {p}
+                  {hasNewContent && (
+                    <span className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
 
