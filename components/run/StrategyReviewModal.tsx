@@ -139,9 +139,9 @@ export function StrategyReviewModal({ open, data, onConfirm, onClose }: Strategy
                                     <div>
                                         <label className="block text-sm font-bold text-black mb-2">Strategic Rationale</label>
                                         <textarea 
-                                            className="w-full text-sm p-3 border border-gray-300 rounded focus:border-black focus:ring-1 focus:ring-black outline-none transition-all min-h-[100px] resize-none text-gray-600 bg-gray-50"
+                                            readOnly
+                                            className="w-full text-sm p-3 border border-gray-300 rounded outline-none min-h-[100px] resize-none text-gray-500 bg-gray-100 cursor-not-allowed"
                                             value={strategy.rationale || ""}
-                                            onChange={(e) => updateField('rationale', e.target.value)}
                                         />
                                     </div>
                                 </div>
