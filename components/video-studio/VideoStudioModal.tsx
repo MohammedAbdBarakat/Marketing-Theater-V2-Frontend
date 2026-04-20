@@ -35,6 +35,13 @@ export function VideoStudioModal({ assetId, projectId, runId, initialContext, on
         setContext(assetId, runId);
 
         async function hydrateHistory() {
+            // GUARD: Do not fetch if we only have a placeholder ID
+            if (!assetId || assetId.startsWith("day-")) {
+                console.log("Waiting for real database asset ID...");
+                setHistoryLoading(false);
+                return;
+            }
+
             setHistoryLoading(true);
             setHistoryError(null);
             try {
