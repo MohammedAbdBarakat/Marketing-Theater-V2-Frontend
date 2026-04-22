@@ -78,6 +78,7 @@ export type RunState = {
   isSignalsModalOpen: boolean;
   signalsData: IntelligenceReport | null;
   strategyToReview: any | null;
+  errorMessage: string | null;
 
   setRunId: (id: string) => void;
   setStatus: (s: PhaseStatus) => void;
@@ -94,6 +95,7 @@ export type RunState = {
   setSignalsModalOpen: (isOpen: boolean) => void;
   setSignalsData: (data: IntelligenceReport | null) => void;
   setStrategyToReview: (data: any) => void;
+  setErrorMessage: (message: string | null) => void;
 };
 
 export const useRunStore = create<RunState>()((set, get) => ({
@@ -109,6 +111,7 @@ export const useRunStore = create<RunState>()((set, get) => ({
   isSignalsModalOpen: false,
   signalsData: null,
   strategyToReview: null,
+  errorMessage: null,
 
   setRunId: (id) => set({ runId: id }),
   setStatus: (s) => set({ status: s }),
@@ -164,6 +167,7 @@ export const useRunStore = create<RunState>()((set, get) => ({
   setSignalsModalOpen: (isOpen) => set({ isSignalsModalOpen: isOpen }),
   setSignalsData: (data) => set({ signalsData: data }),
   setStrategyToReview: (data) => set({ strategyToReview: data }),
+  setErrorMessage: (message) => set({ errorMessage: message }),
   reset: () =>
     set({
       runId: undefined,
@@ -178,5 +182,6 @@ export const useRunStore = create<RunState>()((set, get) => ({
       isSignalsModalOpen: false,
       signalsData: null,
       strategyToReview: null,
+      errorMessage: null,
     }),
 }));

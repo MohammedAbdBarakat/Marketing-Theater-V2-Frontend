@@ -651,6 +651,15 @@ export async function startRun(runId: string): Promise<{ message: string; status
   return { message: "Run started (mock)", status: "started" };
 }
 
+export async function rerunPhase1(runId: string): Promise<{ message: string; status: string }> {
+  if (IS_REMOTE) {
+    return http<{ message: string; status: string }>(`/runs/${runId}/rerun-phase-1`, {
+      method: "POST",
+    });
+  }
+  return { message: "Phase 1 rerun started (mock)", status: "started" };
+}
+
 export async function createRun(input: {
   projectId: string;
   snapshot?: { brand?: BrandInputs; strategy?: StrategyInputs };

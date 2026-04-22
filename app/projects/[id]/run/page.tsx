@@ -19,6 +19,7 @@ import {
   confirmStrategy,
   getLatestRunForProject,
   startRun,
+  rerunPhase1,
   getToolResultsList,
   getToolResultDetail,
 } from "../../../../lib/api";
@@ -48,6 +49,16 @@ function toSkeletonCalendar(skeleton: any[]): Record<string, CalendarEntry[]> {
   }
 
   return calendar;
+}
+
+function inferPhaseFromErrorMessage(message: string, fallbackPhase: number): 1 | 2 | 3 | 4 | 5 {
+  const normalized = message.toLowerCase();
+  if (normalized.includes("phase 3")) return 3;
+  if (normalized.includes("phase 2")) return 2;
+  if (normalized.includes("phase 1")) return 1;
+
+  const safePhase = Math.min(Math.max(fallbackPhase || 1, 1), 5);
+  return safePhase as 1 | 2 | 3 | 4 | 5;
 }
 
 function StatusCard({
@@ -90,8 +101,23 @@ export default function RunPage() {
   const isRunComplete =
     run.status === "done" || run.status === "completed";
 
+  const canRerunPhase1 =
+    Boolean(run.runId) &&
+    run.status !== "running" &&
+    (
+      run.phases[1] !== "idle" ||
+      Boolean(run.errorMessage) ||
+      Boolean(run.signalsData) ||
+      Boolean(run.strategyToReview) ||
+      skeletonDaysCount > 0 ||
+      Boolean(creativeReviewData)
+    );
+
   const applyRunStatus = (status: string) => {
     run.setStatus(status as any);
+    if (status !== "error") {
+      run.setErrorMessage(null);
+    }
 
     switch (status) {
       case "waiting_for_signals":
@@ -115,10 +141,29 @@ export default function RunPage() {
         run.setPhaseStatus(3, "done");
         run.setSignalsModalOpen(false);
         break;
+      case "error": {
+        const failedPhase = (run.currentPhase || 1) as 1 | 2 | 3 | 4 | 5;
+        run.setCurrentPhase(failedPhase);
+        run.setPhaseStatus(failedPhase, "error");
+        if (!useRunStore.getState().errorMessage) {
+          run.setErrorMessage("This run failed. You can re-run Phase 1 to try again.");
+        }
+        run.setSignalsModalOpen(false);
+        break;
+      }
       default:
         run.setSignalsModalOpen(false);
         break;
     }
+  };
+
+  const applyRunError = (message: string) => {
+    const failedPhase = inferPhaseFromErrorMessage(message, run.currentPhase || 1);
+    run.setStatus("error");
+    run.setCurrentPhase(failedPhase);
+    run.setPhaseStatus(failedPhase, "error");
+    run.setSignalsModalOpen(false);
+    run.setErrorMessage(message);
   };
 
   const hydrateFromLatest = (latest: any) => {
@@ -364,7 +409,9 @@ export default function RunPage() {
                   if (authoritativeStatus === "completed" || authoritativeStatus === "running_phase_4") return;
                   break;
                 case "calendar_day":
+                  break;
                 case "error":
+                  applyRunError(ev.message || "Run failed.");
                   break;
               }
             },
@@ -384,6 +431,7 @@ export default function RunPage() {
         if (mounted) {
           setConn("closed");
           run.setStatus("error");
+          run.setErrorMessage("Failed to initialize the run page.");
         }
       }
     }
@@ -398,11 +446,39 @@ export default function RunPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
+  async function handleRerunPhase1() {
+    if (!run.runId) return;
+
+    const shouldRerun = window.confirm(
+      "Re-running Phase 1 will clear the current intelligence report and all downstream strategy, skeleton, and creative outputs for this run. Continue?"
+    );
+    if (!shouldRerun) return;
+
+    const currentRunId = run.runId;
+
+    run.reset();
+    run.setRunId(currentRunId);
+    run.setCurrentPhase(1);
+    setPhase2Stage("2a");
+    setSelectedSkeletonDay(null);
+    setCreativeReviewData(null);
+
+    try {
+      await rerunPhase1(currentRunId);
+      applyRunStatus("running");
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to re-run Phase 1.";
+      applyRunError(message);
+    }
+  }
+
   async function handleConfirmSignals(approvedReport: IntelligenceReport) {
     if (run.runId) {
       await confirmSignals(run.runId, { intelligence_report: approvedReport });
     }
     run.setSignalsData(approvedReport);
+    run.setErrorMessage(null);
     run.setSignalsModalOpen(false);
     run.setPhaseStatus(1, "done");
     setPhase2Stage("2a");
@@ -415,6 +491,23 @@ export default function RunPage() {
         <PhaseStepper phases={run.phases} current={run.currentPhase || 1} phase2Stage={phase2Stage} />
         <ConnectionStatus status={conn} />
       </div>
+      {run.errorMessage ? (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+          <div>
+            <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-red-600">Run Error</div>
+            <div className="mt-1 text-sm font-semibold text-red-900">{run.errorMessage}</div>
+          </div>
+          {run.phases[1] === "error" ? (
+            <button
+              type="button"
+              onClick={handleRerunPhase1}
+              className="inline-flex items-center justify-center rounded-lg bg-red-600 px-4 py-2 text-sm font-bold text-white hover:bg-red-700 transition-colors"
+            >
+              Retry Phase 1
+            </button>
+          ) : null}
+        </div>
+      ) : null}
       <MeetingTheater
         logs={run.theater}
         currentPhase={run.currentPhase || 1}
@@ -439,6 +532,18 @@ export default function RunPage() {
         />
       </div>
 
+      {canRerunPhase1 && run.phases[1] !== "error" ? (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={handleRerunPhase1}
+            className="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-800 hover:border-black hover:text-black transition-colors"
+          >
+            Re-run Phase 1
+          </button>
+        </div>
+      ) : null}
+
       <SignalsReviewModal
         open={run.isSignalsModalOpen} 
         data={run.signalsData} 
@@ -455,6 +560,7 @@ export default function RunPage() {
             await confirmStrategy(run.runId, editedData);
           }
           run.setStrategyToReview(null);
+          run.setErrorMessage(null);
           setPhase2Stage("2b");
           applyRunStatus("running");
         }}
